@@ -1,0 +1,242 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-reading: var(--font-newsreader), Georgia, serif;
+
+  --color-paper: #eef2f5;
+  --color-sheet: #ffffff;
+  --color-ink: #16283a;
+  --color-muted: #51637a;
+  --color-line: #d7dfe6;
+  --color-field: #8496a8;
+
+  --color-rail: #10263f;
+  --color-rail-raised: #1d3c5e;
+  --color-rail-text: #e3ecf5;
+  --color-rail-muted: #9fb4c9;
+  --color-rail-up: #7fdcc4;
+  --color-rail-down: #ffaca2;
+  --color-amber: #f2b84b;
+
+  --color-act: #1d4e89;
+  --color-act-soft: #e6eef8;
+  --color-ok: #0b7560;
+  --color-ok-soft: #e0f3ee;
+  --color-warn: #855a00;
+  --color-warn-soft: #fbf1d8;
+  --color-bad: #b42318;
+  --color-bad-soft: #fcebe8;
+}
+
+@layer base {
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-act);
+    outline-offset: 2px;
+  }
+
+  summary {
+    cursor: pointer;
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  a {
+    text-underline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  label:has(> input[type="file"]) {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    min-height: 2.5rem;
+    padding: 0.375rem 0.875rem;
+    border: 1px solid var(--color-field);
+    border-radius: 0.3125rem;
+    background: var(--color-sheet);
+    color: var(--color-ink);
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .btn:hover:not(:disabled) {
+    border-color: var(--color-act);
+    background: var(--color-act-soft);
+  }
+
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    border-color: var(--color-act);
+    background: var(--color-act);
+    color: white;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: #173f70;
+  }
+
+  .btn-danger {
+    border-color: var(--color-bad);
+    color: var(--color-bad);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    border-color: var(--color-bad);
+    background: var(--color-bad-soft);
+  }
+
+  .btn-small {
+    min-height: 2rem;
+    padding: 0.125rem 0.625rem;
+    font-size: 0.8125rem;
+  }
+
+  .field {
+    min-height: 2.5rem;
+    width: 100%;
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--color-field);
+    border-radius: 0.3125rem;
+    background: white;
+    color: var(--color-ink);
+    font-size: 1rem;
+  }
+
+  /* The page's blue focus ring disappears against the dark sidebar. */
+  .rail :focus-visible {
+    outline-color: var(--color-amber);
+  }
+
+  /* A white page section. Radius stays small: these hold data, they are not cards to admire. */
+  .sheet {
+    border: 1px solid var(--color-line);
+    border-radius: 0.375rem;
+    background: var(--color-sheet);
+  }
+
+  .notice {
+    border-left: 3px solid currentColor;
+    border-radius: 0 0.25rem 0.25rem 0;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+  }
+
+  /*
+   * Serif means a model wrote it. Sans means code computed it or the app is talking. Keep to this,
+   * because it tells the reader which words to check.
+   */
+  .model-text {
+    font-family: var(--font-reading);
+    font-size: 1.0625rem;
+    line-height: 1.5;
+  }
+
+  .model-list {
+    list-style: disc;
+    padding-left: 1.125rem;
+  }
+
+  .model-list > li + li {
+    margin-top: 0.375rem;
+  }
+
+  .prose-dossier p {
+    margin-bottom: 0.5rem;
+  }
+
+  .prose-dossier ul {
+    margin-bottom: 0.5rem;
+    padding-left: 1.125rem;
+    list-style: disc;
+  }
+
+  .prose-dossier li + li {
+    margin-top: 0.25rem;
+  }
+
+  .prose-dossier h3,
+  .prose-dossier h4 {
+    margin-top: 0.75rem;
+    font-weight: 600;
+  }
+
+  .prose-dossier :last-child {
+    margin-bottom: 0;
+  }
+
+  /* The chevron on an expandable row turns when it opens. */
+  .chevron {
+    flex: none;
+    color: var(--color-muted);
+    transition: transform 120ms ease-out;
+  }
+
+  details[open] > summary .chevron {
+    transform: rotate(90deg);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 1.25rem;
+    overflow-x: auto;
+    box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  .tab {
+    display: inline-block;
+    padding: 0.625rem 0.125rem;
+    border-bottom: 2px solid transparent;
+    color: var(--color-muted);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .tab:hover {
+    color: var(--color-ink);
+    border-bottom-color: var(--color-field);
+  }
+
+  .tab[aria-current="page"] {
+    border-bottom-color: var(--color-act);
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  .text-link {
+    color: var(--color-act);
+    text-decoration: underline;
+  }
+
+  .text-link:hover {
+    text-decoration-thickness: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}

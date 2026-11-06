@@ -1,0 +1,70 @@
+{
+  "name": "portchecker",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "check": "pnpm lint && pnpm typecheck",
+    "db:push": "node -e \"require('fs').mkdirSync('data/imports',{recursive:true})\" && drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "dev": "next dev --turbo -H 127.0.0.1",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
+    "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
+    "lint": "eslint src scripts",
+    "lint:fix": "eslint src scripts --fix",
+    "start": "next start -H 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "research": "node --env-file-if-exists=.env --no-warnings scripts/research.ts",
+    "pack:ticker": "node --env-file-if-exists=.env --no-warnings scripts/pack-ticker.ts",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "demo:seed": "node --env-file-if-exists=.env --no-warnings scripts/seed-demo.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
+    "@libsql/client": "^0.14.0",
+    "@openai/codex-sdk": "^0.166.0",
+    "@t3-oss/env-nextjs": "^0.12.0",
+    "@tanstack/react-query": "^5.69.0",
+    "@trpc/client": "^11.0.0",
+    "@trpc/react-query": "^11.0.0",
+    "@trpc/server": "^11.0.0",
+    "diff": "^9.0.0",
+    "drizzle-orm": "^0.45.4",
+    "html-to-text": "^10.0.1",
+    "next": "^15.5.29",
+    "papaparse": "^5.7.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "superjson": "^2.2.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "^4.0.15",
+    "@types/html-to-text": "^9.0.4",
+    "@types/node": "^20.14.10",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9.23.0",
+    "eslint-config-next": "^15.5.29",
+    "eslint-plugin-drizzle": "^0.2.3",
+    "postcss": "^8.5.3",
+    "prettier": "^3.5.3",
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "tailwindcss": "^4.0.15",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.27.0"
+  },
+  "ct3aMetadata": {
+    "initVersion": "7.40.0"
+  },
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=22.18"
+  }
+}
