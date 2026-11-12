@@ -2242,6 +2242,30 @@ void test("saved brief calls mark rejected conclusions without implying agreemen
   }
 });
 
+void test("saved evidence marks an absent link however the source writes it", () => {
+  const known =
+    "https://www.sec.gov/Archives/edgar/data/1/000000000126000001/a.htm";
+  const absent = "https://files.example/c?d=1";
+  const marked = updateFunctions.markUnknownLinks(
+    [
+      `${absent}`,
+      `News:${absent}`,
+      `news: ${absent}`,
+      `file:pack.json#news ${absent}`,
+      `edgar:0000000001-26-000001 ${absent}`,
+      `dossier; https://www.sec.gov.files.example/Archives/x`,
+      `edgar:0000000001-26-000001 ${known}`,
+      `${known}`,
+      "file:pack.json#quote",
+    ].map((source) => ({ ...evidence(source), source })),
+    JSON.stringify({ new_filings: [{ url: known }] }),
+  );
+  assert.deepEqual(
+    marked.map((item) => item.link_not_in_files ?? false),
+    [true, true, true, true, true, true, false, false, false],
+  );
+});
+
 void test("saved evidence marks only news links absent from the research files", () => {
   assert.equal(typeof updateFunctions.markUnknownLinks, "function");
   const known = "https://example.com/article?x=1&y=2";

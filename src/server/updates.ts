@@ -68,14 +68,12 @@ export function markUnknownLinks(
       url.replace(/[),.;]+$/, ""),
     );
   const known = new Set(urls(fileText));
-  return evidence.map((item) => {
-    const links = urls(
-      (item.source.match(/\bnews:https?:\/\/[^\s<>"\\|]+/g) ?? []).join(" "),
-    );
-    return links.some((url) => !known.has(url))
+  // Every link in a source is checked, since the page makes each one clickable whatever precedes it.
+  return evidence.map((item) =>
+    urls(item.source).some((url) => !known.has(url))
       ? { ...item, link_not_in_files: true }
-      : item;
-  });
+      : item,
+  );
 }
 
 async function runModes() {
