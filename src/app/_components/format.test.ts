@@ -33,6 +33,24 @@ void test("money and percentages retain signs, rounding, zero and missing amount
   assert.equal(format.signedPct(0), "0.00%");
 });
 
+void test("an amount that rounds to zero is shown as zero, without a sign", () => {
+  assert.equal(format.usd(-0.004), "$0.00");
+  assert.equal(format.usd(-0.4, 0), "$0");
+  assert.equal(format.usd(-0.005), "-$0.01");
+  assert.equal(format.signedUsd(0.4), "$0");
+  assert.equal(format.signedUsd(-0.4), "$0");
+  assert.equal(format.signedUsd(0.5), "+$1");
+  assert.equal(format.signedUsd(-0.004, 2), "$0.00");
+  assert.equal(format.signedUsd(-0.006, 2), "−$0.01");
+  assert.equal(format.pct(-0.04), "0.0%");
+  assert.equal(format.pct(-0.05), "-0.1%");
+  assert.equal(format.pct(-0.004, 2), "0.00%");
+  assert.equal(format.signedPct(0.004), "0.00%");
+  assert.equal(format.signedPct(-0.004), "0.00%");
+  assert.equal(format.signedPct(0.006), "+0.01%");
+  assert.equal(format.signedPct(-0.006), "−0.01%");
+});
+
 void test("a positive move is green, a negative move red and zero or missing neutral", () => {
   assert.equal(format.moveColor(1), "text-ok");
   assert.equal(format.moveColor(-1), "text-bad");

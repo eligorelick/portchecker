@@ -27,10 +27,16 @@ function commonEfforts(models: { efforts: string[] }[]) {
   );
 }
 
+/** An amount that rounds to zero is zero, so nothing reads "-$0.00" or "+0.00%". */
+const zeroed = (n: number, digits: number) =>
+  Number(n.toFixed(digits)) === 0 ? 0 : n;
+
+const sign = (n: number) => (n > 0 ? "+" : n < 0 ? "−" : "");
+
 export const usd = (n: number | null | undefined, digits = 2) =>
   n == null
     ? "—"
-    : n.toLocaleString("en-US", {
+    : zeroed(n, digits).toLocaleString("en-US", {
         style: "currency",
         currency: "USD",
         maximumFractionDigits: digits,
@@ -39,17 +45,13 @@ export const usd = (n: number | null | undefined, digits = 2) =>
 
 /** "+$850" or "−$850". */
 export const signedUsd = (n: number | null | undefined, digits = 0) =>
-  n == null
-    ? "—"
-    : `${n > 0 ? "+" : n < 0 ? "−" : ""}${usd(Math.abs(n), digits)}`;
+  n == null ? "—" : `${sign(zeroed(n, digits))}${usd(Math.abs(n), digits)}`;
 
 export const pct = (n: number | null | undefined, digits = 1) =>
-  n == null ? "—" : `${n.toFixed(digits)}%`;
+  n == null ? "—" : `${zeroed(n, digits).toFixed(digits)}%`;
 
 export const signedPct = (n: number | null | undefined) =>
-  n == null
-    ? "—"
-    : `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(2)}%`;
+  n == null ? "—" : `${sign(zeroed(n, 2))}${Math.abs(n).toFixed(2)}%`;
 
 export const moveColor = (n: number | null | undefined) =>
   n == null || n === 0 ? "text-muted" : n > 0 ? "text-ok" : "text-bad";
