@@ -2264,6 +2264,22 @@ void test("saved evidence marks an absent link however the source writes it", ()
     marked.map((item) => item.link_not_in_files ?? false),
     [true, true, true, true, true, true, false, false, false],
   );
+  // The page links what it reads from a source, so the check reads the source the same way: an
+  // upper-case scheme is still a link, and a quote does not end one.
+  const home = "https://www.sec.gov";
+  assert.deepEqual(
+    updateFunctions
+      .markUnknownLinks(
+        [
+          "HTTPS://files.example/x",
+          `${home}"@files.example/x`,
+          `news:${home}.`,
+        ].map((source) => ({ ...evidence(source), source })),
+        `Filed at ${home}, per the index.`,
+      )
+      .map((item) => item.link_not_in_files ?? false),
+    [true, true, false],
+  );
 });
 
 void test("saved evidence marks only news links absent from the research files", () => {

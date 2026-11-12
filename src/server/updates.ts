@@ -1,5 +1,6 @@
 import { desc, eq } from "drizzle-orm";
 
+import { sourceParts } from "../app/_components/format.ts";
 import { db } from "./db/index.ts";
 import {
   briefs,
@@ -63,14 +64,20 @@ export function markUnknownLinks(
   evidence: AnalystResult["evidence"],
   fileText: string,
 ): StoredResult["evidence"] {
+  const trimmed = (url: string) => url.replace(/[),.;]+$/, "");
   const urls = (text: string) =>
-    (text.match(/https?:\/\/[^\s<>"\\|]+/g) ?? []).map((url) =>
-      url.replace(/[),.;]+$/, ""),
-    );
+    (text.match(/https?:\/\/[^\s<>"\\|]+/gi) ?? []).map(trimmed);
   const known = new Set(urls(fileText));
-  // Every link in a source is checked, since the page makes each one clickable whatever precedes it.
+  // A source is read both as the files are and exactly as the page links it, whatever precedes the
+  // link, so the page can never make clickable an address this check did not see.
+  const linked = (source: string) => [
+    ...urls(source),
+    ...sourceParts(source).flatMap((part) =>
+      part.url ? [trimmed(part.url)] : [],
+    ),
+  ];
   return evidence.map((item) =>
-    urls(item.source).some((url) => !known.has(url))
+    linked(item.source).some((url) => !known.has(url))
       ? { ...item, link_not_in_files: true }
       : item,
   );
