@@ -1,0 +1,4 @@
+# Check out LF line endings on every platform. With Git for Windows defaults (core.autocrlf=true)
+# files arrive as CRLF and `pnpm format:check` fails on all of them.
+* text=auto eol=lf
+*.png binary
