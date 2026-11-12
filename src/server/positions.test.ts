@@ -229,6 +229,44 @@ void test("csv: every way a broker writes a total cost keeps its sign or stays u
   );
 });
 
+void test("csv: a number in a form no US broker writes is unknown, never a different number", () => {
+  const cost = (cell: string) =>
+    parsePositionsCsv(`Symbol,Quantity,Cost Basis\nAAA,1,"${cell}"`).rows[0]
+      ?.costBasis;
+  for (const [cell, expected] of [
+    // A minus inside parentheses is still a negative, not a double negative.
+    ["(-5)", -5],
+    ["-(5)", -5],
+    // Commas only group thousands. A decimal comma must not become 125 or 1.23456.
+    ["12,5", null],
+    ["1.234,56", null],
+    ["1,2345", null],
+    ["1,234,567.89", 1234567.89],
+    ["$-1,234.56", -1234.56],
+    // Only plain decimals and scientific notation are numbers.
+    ["0x10", null],
+    ["0b11", null],
+    ["1e3", 1000],
+    ["1.5E-2", 0.015],
+    ["1e999", null],
+    ["+5", 5],
+    [".5", 0.5],
+    ["5.", 5],
+    ["5-", null],
+    ["e5", null],
+    ["()", null],
+  ] as const) {
+    assert.equal(cost(cell), expected, cell);
+  }
+  // A quantity it cannot read is not a position, so the row is left out and listed.
+  const european = parsePositionsCsv('Symbol,Quantity\nAAA,"12,5"\nBBB,2');
+  assert.deepEqual(
+    european.rows.map((r) => [r.ticker, r.quantity]),
+    [["BBB", 2]],
+  );
+  assert.equal(european.skipped[0]?.row, "AAA");
+});
+
 void test("csv: abbreviated and decorated headers still find the right amounts", () => {
   const parsed = parsePositionsCsv(
     '" SYMBOL (Ticker) ",Name,Qty,Last Price,Mkt Val,Cost Basis Total\nAAA,Acme,2,10,20,15',

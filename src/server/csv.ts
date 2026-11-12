@@ -23,12 +23,19 @@ function clean(cell: string | undefined) {
 function toNumber(cell: string | undefined): number | null {
   // Quantity, value and cost are never percents, so a percent means the row is out of line.
   if (cell?.includes("%")) return null;
-  const c = clean(cell);
-  if (!c || c === "--" || /^n\/?a$/i.test(c)) return null;
-  const negative = /^\(.*\)$/.test(c);
-  const n = Number(c.replace(/[()]/g, ""));
+  const c = (cell ?? "").replace(/[$"]/g, "").trim();
+  // Parentheses and a minus both mean negative. Commas may only group thousands, so a decimal
+  // comma or a hex literal is unknown and never a different number.
+  const sign = /^[(+-]*/.exec(c)![0];
+  const digits = c.slice(sign.length).replace(/\)$/, "");
+  if (
+    !/\d/.test(digits) ||
+    !/^(\d{1,3}(,\d{3})+|\d*)(\.\d*)?(e[-+]?\d+)?$/i.test(digits)
+  )
+    return null;
+  const n = Number(digits.replace(/,/g, ""));
   if (!Number.isFinite(n)) return null;
-  return negative ? -n : n;
+  return /[(-]/.test(sign) ? -n : n;
 }
 
 const usd = (n: number) =>
