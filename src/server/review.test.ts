@@ -886,6 +886,18 @@ void test("price history is sorted, one row a day, and a missing price is no pri
     assert.equal(summary?.latest_price, 100);
     assert.equal(summary?.low_1y, 90);
   }
+  // A row with no date, or a price that is not a number, is not a trading day.
+  const undated = priceSummary([
+    { price: 5 },
+    { date: null, price: 6 },
+    { date: "2026-11-05", price: true },
+    { date: "2026-11-04", price: 110 },
+    { date: "2026-11-03", price: "100" },
+  ]);
+  assert.equal(undated?.latest_date, "2026-11-04");
+  assert.equal(undated?.return_1d_pct, 10);
+  assert.equal(undated?.low_1y, 100);
+  assert.equal(undated?.trading_days, 2);
 });
 
 void test("relative returns need the same period on both sides", () => {

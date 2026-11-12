@@ -330,10 +330,15 @@ export async function pruneFmpCache() {
 export function pricePoints(history: Row[]) {
   const byDate = new Map<string, number>();
   for (const h of history) {
-    const price = h.price === null || h.price === "" ? NaN : Number(h.price);
-    const date = String(h.date);
-    if (price > 0 && Number.isFinite(price) && !byDate.has(date))
-      byDate.set(date, price);
+    const price =
+      typeof h.price === "number" || (typeof h.price === "string" && h.price)
+        ? Number(h.price)
+        : NaN;
+    // "undefined" would sort after every real date and become the latest price.
+    if (typeof h.date !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(h.date))
+      continue;
+    if (price > 0 && Number.isFinite(price) && !byDate.has(h.date))
+      byDate.set(h.date, price);
   }
   return [...byDate]
     .map(([date, price]) => ({ date, price }))
