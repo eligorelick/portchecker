@@ -63,7 +63,8 @@ export default async function HoldingsPage() {
     };
   });
 
-  const sectors = facts.sector_weights.filter((s) => s.weight_pct > 0);
+  // A net short is a negative weight. Hiding it would leave rows that add to more than the whole.
+  const sectors = facts.sector_weights.filter((s) => s.weight_pct !== 0);
   const largest = Math.max(...sectors.map((s) => s.weight_pct), 1);
 
   return (
@@ -123,7 +124,7 @@ export default async function HoldingsPage() {
                       <span
                         className="bg-act block h-1.5 rounded-r-full"
                         style={{
-                          width: `${(s.weight_pct / largest) * 100}%`,
+                          width: `${(Math.max(s.weight_pct, 0) / largest) * 100}%`,
                         }}
                       />
                     </span>

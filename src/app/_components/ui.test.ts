@@ -1708,6 +1708,24 @@ void test("Holdings names each fund whose sector breakdown is missing", async ()
   assert.match(html, /9\.0%/);
 });
 
+void test("Holdings shows a net-short sector, so the rows still add up to the whole", async () => {
+  resetPageFixture();
+  // Long $1,000 of technology, short $500 of energy and $500 cash on $1,000 of net value.
+  pageFixture.facts.sector_weights = [
+    { sector: "Technology", weight_pct: 100 },
+    { sector: "Cash", weight_pct: 50 },
+    { sector: "Unknown", weight_pct: 0 },
+    { sector: "Energy", weight_pct: -50 },
+  ];
+  const html = await renderHoldings();
+  assert.match(html, /Energy<\/span>/);
+  assert.match(html, />-50\.0%</);
+  // A bar cannot show a negative share, and an empty sector still has no row.
+  assert.match(html, /width:0%/);
+  assert.doesNotMatch(html, /width:-/);
+  assert.doesNotMatch(html, /Unknown<\/span>/);
+});
+
 void test("server pages identify Today and Holdings in browser titles", () => {
   assert.deepEqual(todayPage.metadata?.title, {
     absolute: "Today · Portchecker",
