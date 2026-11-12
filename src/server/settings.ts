@@ -43,13 +43,20 @@ export async function getSettings(): Promise<Settings> {
 }
 
 export async function saveSettings(patch: Partial<Settings>) {
-  for (const [key, raw] of Object.entries(patch)) {
-    if (raw === undefined) continue;
-    const value = String(raw);
-    await db
-      .insert(settingsTable)
-      .values({ key, value })
-      .onConflictDoUpdate({ target: settingsTable.key, set: { value } });
+  try {
+    for (const [key, raw] of Object.entries(patch)) {
+      if (raw === undefined) continue;
+      const value = String(raw);
+      await db
+        .insert(settingsTable)
+        .values({ key, value })
+        .onConflictDoUpdate({ target: settingsTable.key, set: { value } });
+    }
+  } catch {
+    // The driver's error quotes the statement's parameters, and one of them can be the API key.
+    throw new Error(
+      "Could not save settings. Check that the database is writable and that `pnpm db:push` has been run.",
+    );
   }
 }
 

@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, mock, test } from "node:test";
 import { pathToFileURL } from "node:url";
+import { inspect } from "node:util";
 
 import { TRPCError, type AnyRouter } from "@trpc/server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
@@ -476,6 +477,29 @@ void test("the settings response masks saved and environment keys and saving kee
       syncBuiltinESMExports();
     }
   } finally {
+    await client.execute("DELETE FROM settings");
+  }
+});
+
+void test("a failed settings write never repeats the key it was saving", async () => {
+  const { saveSettings } = await import("./settings.ts");
+  const secret = "fake-anthropic-failed-write-4321";
+  // The database driver's own error quotes the statement's parameters, the key among them.
+  await client.execute(
+    "CREATE TRIGGER refuse_key BEFORE INSERT ON settings WHEN NEW.key = 'anthropic_api_key' BEGIN SELECT RAISE(ABORT, 'disk I/O error'); END",
+  );
+  try {
+    await assert.rejects(
+      saveSettings({ claude_model: "fake-model", anthropic_api_key: secret }),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, /^Could not save settings\./);
+        assert.doesNotMatch(inspect(error, { depth: 9 }), /fake-anthropic/);
+        return true;
+      },
+    );
+  } finally {
+    await client.execute("DROP TRIGGER refuse_key");
     await client.execute("DELETE FROM settings");
   }
 });
