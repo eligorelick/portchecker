@@ -45,10 +45,11 @@ export function middleware(req: NextRequest) {
     return deny("Cross-site requests are not allowed.");
   const res = NextResponse.next();
   // A click inside a frame carries this app's own origin and passes the check above, so no site may
-  // frame it. Images stay local, so a link in model text cannot call out when it renders.
+  // frame it. Images stay local, so a link in model text cannot call out when it renders. Nothing
+  // here uses plugins, a <base> or a form posting elsewhere, so those are closed off too.
   res.headers.set(
     "Content-Security-Policy",
-    "frame-ancestors 'none'; img-src 'self' data:",
+    "frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'",
   );
   return res;
 }

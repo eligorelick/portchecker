@@ -277,9 +277,33 @@ void test("no other site can frame the app, and pages load images only from the 
     assert.equal(res.headers.get("x-middleware-next"), "1");
     assert.equal(
       res.headers.get("content-security-policy"),
-      "frame-ancestors 'none'; img-src 'self' data:",
+      "frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'",
     );
   }
+});
+
+void test("every response says how to treat it, and none names the framework", async () => {
+  const { default: nextConfig } = (await import(
+    pathToFileURL(path.join(root, "next.config.js")).href
+  )) as {
+    default: {
+      poweredByHeader?: boolean;
+      headers?: () => Promise<
+        { source: string; headers: { key: string; value: string }[] }[]
+      >;
+    };
+  };
+  assert.equal(nextConfig.poweredByHeader, false);
+  // The middleware skips static files, so these are set where every path gets them.
+  assert.deepEqual(await nextConfig.headers?.(), [
+    {
+      source: "/:path*",
+      headers: [
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "Referrer-Policy", value: "same-origin" },
+      ],
+    },
+  ]);
 });
 
 void test("a page on another site cannot make the API run with a GET", async () => {
