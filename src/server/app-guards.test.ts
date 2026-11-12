@@ -282,6 +282,29 @@ void test("no other site can frame the app, and pages load images only from the 
   }
 });
 
+void test("a page on another site cannot make the API run with a GET", async () => {
+  const get = (path: string, site?: string) =>
+    middleware(
+      new NextRequest(`http://127.0.0.1:3000${path}`, {
+        headers: {
+          host: "127.0.0.1:3000",
+          ...(site ? { "sec-fetch-site": site } : {}),
+        },
+      }),
+    );
+  // An <img> or a script tag elsewhere sends no Origin on a GET, but the browser says where it is from.
+  for (const site of ["cross-site", "same-site"]) {
+    const refused = get("/api/trpc/settings.codexStatus", site);
+    assert.equal(refused.status, 403);
+    assert.match(await refused.text(), /Cross-site requests/);
+  }
+  // The app's own requests, an address typed by hand, and tools that are not browsers still pass.
+  for (const site of ["same-origin", "none", undefined])
+    assert.equal(get("/api/trpc/settings.codexStatus", site).status, 200);
+  // Following a link from another site to a page is ordinary navigation.
+  assert.equal(get("/holdings", "cross-site").status, 200);
+});
+
 void test("the host and origin checks still refuse before anything else", async () => {
   const foreign = middleware(request("evil.example"));
   assert.equal(foreign.status, 403);

@@ -33,6 +33,16 @@ export function middleware(req: NextRequest) {
     if (originHost !== host)
       return deny("Cross-site requests are not allowed.");
   }
+  // A GET sends no Origin, so a page elsewhere could still make the API run with an image tag. The
+  // browser says where a request came from; a tool that sends no such header is not a browser.
+  const site = req.headers.get("sec-fetch-site");
+  if (
+    req.nextUrl.pathname.startsWith("/api/") &&
+    site &&
+    site !== "same-origin" &&
+    site !== "none"
+  )
+    return deny("Cross-site requests are not allowed.");
   const res = NextResponse.next();
   // A click inside a frame carries this app's own origin and passes the check above, so no site may
   // frame it. Images stay local, so a link in model text cannot call out when it renders.
