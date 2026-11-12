@@ -165,13 +165,28 @@ export function gainLabel(withBasis: number, holdings: number) {
 }
 
 export function packDates(pack: {
-  quote?: { as_of_et?: unknown } | null;
+  quote?: { as_of_et?: unknown; timestamp?: unknown } | null;
+  price_summary?: { latest_date?: unknown } | null;
   generated_on?: unknown;
 }) {
+  const priced = pack.quote?.timestamp;
+  const quoteDay =
+    typeof priced === "number" && priced > 0
+      ? new Date(priced * 1000).toLocaleDateString("en-CA", {
+          timeZone: "America/New_York",
+        })
+      : null;
+  const lastClose = pack.price_summary?.latest_date;
   return [
     typeof pack.quote?.as_of_et === "string" &&
       pack.quote.as_of_et &&
       `Prices as of ${pack.quote.as_of_et}.`,
+    // An intraday quote is a session ahead of the daily closes the returns and range are built from.
+    quoteDay !== null &&
+      typeof lastClose === "string" &&
+      validDay(lastClose) &&
+      lastClose !== quoteDay &&
+      `Returns, highs and lows use closing prices through ${dayWithYear(lastClose, null)}.`,
     typeof pack.generated_on === "string" &&
       pack.generated_on &&
       `Research file from ${dayWithYear(pack.generated_on, null)}.`,

@@ -894,6 +894,41 @@ void test("research dates distinguish the price time from the saved research dat
   assert.equal(format.packDates?.({ quote: { as_of_et: 0 } }), "");
 });
 
+void test("research dates say when returns stop a session before the quote", () => {
+  const at = (hourUtc: number, day = 12) => ({
+    as_of_et: "the quote time",
+    timestamp: Date.UTC(2026, 10, day, hourUtc) / 1000,
+  });
+  // 11:00 ET on Thursday Nov 12, while the daily history ends at Wednesday's close.
+  assert.equal(
+    format.packDates({
+      quote: at(16),
+      price_summary: { latest_date: "2026-11-11" },
+      generated_on: "2026-11-12",
+    }),
+    "Prices as of the quote time. Returns, highs and lows use closing prices through Nov 11, 2026. Research file from Nov 12, 2026.",
+  );
+  const quiet = "Prices as of the quote time.";
+  // The same session, including an 8 PM ET quote that is already Nov 13 in UTC and in Tokyo.
+  for (const quote of [at(16), at(21), at(1, 13)]) {
+    assert.equal(
+      format.packDates({ quote, price_summary: { latest_date: "2026-11-12" } }),
+      quiet,
+    );
+  }
+  // Nothing to compare: no quote time, no history, or a date that is not one.
+  for (const pack of [
+    {
+      quote: { as_of_et: "the quote time" },
+      price_summary: { latest_date: "2026-11-11" },
+    },
+    { quote: at(16), price_summary: null },
+    { quote: at(16), price_summary: { latest_date: "undefined" } },
+  ]) {
+    assert.equal(format.packDates(pack), quiet);
+  }
+});
+
 void test("ticker numbers date fiscal quarters and use signed return precision", () => {
   const pack = {
     income_statement_quarterly: [
