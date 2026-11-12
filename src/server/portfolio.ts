@@ -103,8 +103,11 @@ export function computePortfolioFacts(
       day_change_value: change === null ? null : round(change * h.quantity),
       cost_basis: h.costBasis,
       unrealized_gain: gain === null ? null : round(gain),
+      // A percent needs a base on the position's own side: a cost under a long, proceeds under a short.
       unrealized_gain_pct:
-        gain === null || !h.signedBasis
+        gain === null ||
+        !h.signedBasis ||
+        Math.sign(h.signedBasis) !== Math.sign(h.quantity)
           ? null
           : round((gain / Math.abs(h.signedBasis)) * 100),
       sector: isCash ? "Cash" : (sectors.get(h.ticker) ?? "Unknown"),

@@ -909,6 +909,29 @@ void test("lots of one ticker in several accounts gain the same for either sign 
   );
 });
 
+void test("a percent gain needs a basis on the position's own side", () => {
+  const position = (rows: ReturnType<typeof holding>[]) =>
+    computePortfolioFacts(
+      rows,
+      new Map([["S", quote(100, 0)]]),
+      new Map(),
+      "2026-11-05",
+    ).positions[0];
+  // A long whose basis went negative still has a dollar gain, but no base to take a percent of.
+  const negative = position([holding("S", 1, -50)]);
+  assert.equal(negative?.unrealized_gain, 150);
+  assert.equal(negative?.unrealized_gain_pct, null);
+  // Long 1 bought for $1,000 and short 4 sold for $480 nets short against a net cost.
+  const netShort = position([holding("S", 1, 1000), holding("S", -4, 480)]);
+  assert.equal(netShort?.unrealized_gain, -820);
+  assert.equal(netShort?.unrealized_gain_pct, null);
+  // Offsetting lots leave no position to take a percent of, and never divide zero by zero.
+  for (const basis of [500, 0]) {
+    const flat = position([holding("S", 5, basis), holding("S", -5, basis)]);
+    assert.equal(flat?.unrealized_gain_pct, null);
+  }
+});
+
 void test("the funds behind the no-breakdown line are named, biggest first", () => {
   const facts = computePortfolioFacts(
     [
