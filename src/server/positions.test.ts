@@ -869,6 +869,46 @@ void test("a long position's gain and percent stay value less basis", () => {
   assert.equal(long?.unrealized_gain_pct, 25);
 });
 
+void test("lots of one ticker in several accounts gain the same for either sign of a short's basis", () => {
+  const position = (rows: ReturnType<typeof holding>[]) =>
+    computePortfolioFacts(
+      rows,
+      new Map([["S", quote(100, 0)]]),
+      new Map(),
+      "2026-11-05",
+    ).positions[0];
+  // Long 10 bought for $800 is up $200. Short 4 sold for $480 is up $80.
+  for (const proceeds of [-480, 480]) {
+    const both = position([holding("S", 10, 800), holding("S", -4, proceeds)]);
+    assert.equal(both?.quantity, 6);
+    assert.equal(both?.value, 600);
+    assert.equal(both?.unrealized_gain, 280);
+    assert.equal(both?.unrealized_gain_pct, 87.5);
+  }
+  // Two short lots of 5, each sold for $600, cost $1,000 to cover: up $200 on $1,200.
+  for (const [first, second] of [
+    [-600, -600],
+    [600, 600],
+    [600, -600],
+  ] as const) {
+    const shorts = position([
+      holding("S", -5, first),
+      holding("S", -5, second),
+    ]);
+    assert.equal(shorts?.unrealized_gain, 200);
+    assert.equal(shorts?.unrealized_gain_pct, 16.67);
+  }
+  // The basis shown is still the sum of what each account reported.
+  assert.equal(
+    position([holding("S", 10, 800), holding("S", 5, 450)])?.cost_basis,
+    1250,
+  );
+  assert.equal(
+    position([holding("S", 10, 800), holding("S", 5, null)])?.unrealized_gain,
+    null,
+  );
+});
+
 void test("the funds behind the no-breakdown line are named, biggest first", () => {
   const facts = computePortfolioFacts(
     [

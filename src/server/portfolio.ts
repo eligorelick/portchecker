@@ -55,17 +55,26 @@ export function computePortfolioFacts(
   fundSectors = new Map<string, Row[]>(),
   earnings = new Map<string, Row[]>(),
 ) {
-  const combined = new Map<string, HoldingInput>();
+  // Brokers store a short's basis with either sign. Each lot is signed before lots are added, a
+  // long's cost positive and a short's proceeds negative, so a gain is always value less basis.
+  const signedBasis = (row: HoldingInput) =>
+    row.costBasis === null || row.quantity >= 0
+      ? row.costBasis
+      : -Math.abs(row.costBasis);
+  const add = (a: number | null, b: number | null) =>
+    a === null || b === null ? null : a + b;
+  const combined = new Map<
+    string,
+    HoldingInput & { signedBasis: number | null }
+  >();
   for (const row of rows) {
     const existing = combined.get(row.ticker);
     if (existing) {
       existing.quantity += row.quantity;
-      existing.costBasis =
-        existing.costBasis === null || row.costBasis === null
-          ? null
-          : existing.costBasis + row.costBasis;
+      existing.costBasis = add(existing.costBasis, row.costBasis);
+      existing.signedBasis = add(existing.signedBasis, signedBasis(row));
     } else {
-      combined.set(row.ticker, { ...row });
+      combined.set(row.ticker, { ...row, signedBasis: signedBasis(row) });
     }
   }
 
@@ -80,11 +89,8 @@ export function computePortfolioFacts(
     const changePct = price === null ? null : num(quote?.changePercentage);
     const value = price === null ? null : h.quantity * price;
     const gain =
-      !isCash && value !== null && h.costBasis !== null
-        ? // A short's value is negative, and brokers store its basis with either sign.
-          h.quantity < 0
-          ? value + Math.abs(h.costBasis)
-          : value - h.costBasis
+      !isCash && value !== null && h.signedBasis !== null
+        ? value - h.signedBasis
         : null;
     return {
       ticker: h.ticker,
@@ -98,9 +104,9 @@ export function computePortfolioFacts(
       cost_basis: h.costBasis,
       unrealized_gain: gain === null ? null : round(gain),
       unrealized_gain_pct:
-        gain === null || !h.costBasis
+        gain === null || !h.signedBasis
           ? null
-          : round((gain / Math.abs(h.costBasis)) * 100),
+          : round((gain / Math.abs(h.signedBasis)) * 100),
       sector: isCash ? "Cash" : (sectors.get(h.ticker) ?? "Unknown"),
     };
   });
