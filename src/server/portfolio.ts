@@ -116,7 +116,10 @@ export function computePortfolioFacts(
     .sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
 
   const invested = withWeights.filter((p) => p.ticker !== "CASH");
-  const top5 = invested.slice(0, 5).reduce((sum, p) => sum + (p.value ?? 0), 0);
+  // A short sorts last, so it must not be netted in merely because fewer than five longs fill the list.
+  const top5 = invested
+    .slice(0, 5)
+    .reduce((sum, p) => sum + Math.max(p.value ?? 0, 0), 0);
 
   const bySector = new Map<string, number>();
   const addToSector = (sector: string, value: number) =>

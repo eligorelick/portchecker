@@ -570,6 +570,39 @@ void test("portfolio: top five means the five largest investments and excludes l
   );
 });
 
+void test("portfolio: a short is never netted into the top five, however few positions there are", () => {
+  const top5 = (longs: number[]) =>
+    computePortfolioFacts(
+      [
+        ...longs.map((_, i) => holding(`L${i}`)),
+        holding("SHRT", -5),
+        holding("CASH", 500),
+      ],
+      new Map([
+        ...longs.map((price, i): [string, { price: number }] => [
+          `L${i}`,
+          { price },
+        ]),
+        ["SHRT", { price: 100 }],
+      ]),
+      new Map(),
+      "2026-11-05",
+    );
+  // Long $1,000, short -$500, cash $500: the long alone is all of the $1,000 net value.
+  const one = top5([1000]);
+  assert.equal(one.total_value, 1000);
+  assert.equal(one.top5_concentration_pct, 100);
+  // Four longs leave a free slot, which the short must not fill.
+  assert.equal(top5([500, 400, 300, 200]).top5_concentration_pct, 100);
+  // A fifth long of $1 fills the slot. The figure must not jump because of it.
+  assert.equal(top5([500, 400, 300, 200, 1]).top5_concentration_pct, 100);
+  // With six longs the short was already left out: 1,500 of the 1,600 net.
+  assert.equal(
+    top5([500, 400, 300, 200, 100, 100]).top5_concentration_pct,
+    93.75,
+  );
+});
+
 void test("portfolio: a complete fund breakdown has no unallocated remainder", () => {
   const facts = computePortfolioFacts(
     [holding("FUND")],
