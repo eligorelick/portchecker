@@ -420,42 +420,100 @@ void test("csv: duplicate rows sum known values and never fill an unknown value 
   }
 });
 
-void test("csv: a long and a short row of one ticker in one account leave the basis unknown", () => {
-  // Long 10 bought for $800 and short 4 sold for $480, at $100: up $200 and up $80.
-  const gainOf = (csv: string) =>
+void test("csv: a long and a short row of one ticker in one account keep the right gain", () => {
+  const position = (csv: string) =>
     computePortfolioFacts(
       parsePositionsCsv(csv).rows,
       new Map([["S", quote(100, 0)]]),
       new Map(),
       "2026-11-05",
-    ).positions[0]?.unrealized_gain;
+    ).positions[0];
   const header = "Symbol,Quantity,Cost Basis";
-  // In two accounts each lot keeps its own basis, and the gain is right.
+  // Long 10 bought for $800 and short 4 sold for $480, at $100: up $200 and up $80.
+  // In two accounts each lot keeps its own basis.
   assert.equal(
-    gainOf(
+    position(
       `Positions for account One as of today\n${header}\nS,10,800\nPositions for account Two as of today\n${header}\nS,-4,480`,
-    ),
+    )?.unrealized_gain,
     280,
   );
-  // In one account the rows become one holding with one basis. $800 + $480 is the basis of
-  // neither side, and gave a loss of $680. Unknown is the honest answer, and the preview says why.
-  const oneAccount = parsePositionsCsv(`${header}\nS,10,800\nS,-4,480`);
-  assert.deepEqual(
-    oneAccount.rows.map((r) => [r.quantity, r.costBasis]),
-    [[6, null]],
+  // In one account the rows become one holding with one basis: what the long cost, less what the
+  // short sale brought in, however the file writes the second. Adding the two cells as written
+  // gave $1,280 and a loss of $680 for the first spelling.
+  for (const proceeds of ["480", "-480", "($480.00)"]) {
+    const csv = `${header}\nS,10,800\nS,-4,"${proceeds}"`;
+    const parsed = parsePositionsCsv(csv);
+    assert.deepEqual(
+      parsed.rows.map((r) => [r.quantity, r.costBasis]),
+      [[6, 320]],
+      proceeds,
+    );
+    assert.equal(position(csv)?.unrealized_gain, 280, proceeds);
+    assert.deepEqual(parsed.notes, [], proceeds);
+  }
+  // The other way round. Long 4 bought for $480 is down $80, short 10 sold for $800 is down $200.
+  for (const proceeds of ["800", "-800"]) {
+    const csv = `${header}\nS,4,480\nS,-10,${proceeds}`;
+    assert.deepEqual(
+      parsePositionsCsv(csv).rows.map((r) => [r.quantity, r.costBasis]),
+      [[-6, -320]],
+      proceeds,
+    );
+    assert.equal(position(csv)?.unrealized_gain, -280, proceeds);
+  }
+  // The order of the rows does not matter, and a third row adds to the result.
+  assert.equal(
+    parsePositionsCsv(`${header}\nS,-4,480\nS,10,800`).rows[0]?.costBasis,
+    320,
   );
-  assert.equal(gainOf(`${header}\nS,10,800\nS,-4,480`), null);
-  assert.match(
-    oneAccount.notes.join("\n"),
-    /S: .*both long and short.*cost basis.*blank/,
-  );
-  // A later row on either side cannot bring a basis back.
   assert.equal(
     parsePositionsCsv(`${header}\nS,10,800\nS,-4,480\nS,5,450`).rows[0]
       ?.costBasis,
+    770,
+  );
+  // A row that arrives after the two sides were combined joins that figure the same way. Long 1
+  // for $1,604 is down $1,504; short 9 for $3,084 is up $2,184; short 1 for $1,380 is up $1,280.
+  assert.equal(
+    position(`${header}\nS,1,1604\nS,-9,3084\nS,-1,1380`)?.unrealized_gain,
+    1960,
+  );
+  // What matters is where the holding ends up, not where it stood after two of its rows. Long 3
+  // for $1,972, short 4 for $1,939, long 11 for $2,693: net long 10 with a basis of $2,726.
+  for (const proceeds of ["1939", "-1939"]) {
+    const csv = `${header}\nS,3,1972\nS,-4,${proceeds}\nS,11,2693`;
+    assert.deepEqual(
+      parsePositionsCsv(csv).rows.map((r) => [r.quantity, r.costBasis]),
+      [[10, 2726]],
+      proceeds,
+    );
+    assert.deepEqual(parsePositionsCsv(csv).notes, [], proceeds);
+  }
+  // A short's basis is read back as negative, so a net short whose lots cost more than the short
+  // sale brought in has no basis this app can store. It is left blank, and the preview says why.
+  const stuck = parsePositionsCsv(`${header}\nS,10,2000\nS,-14,480`);
+  assert.deepEqual(
+    stuck.rows.map((r) => [r.quantity, r.costBasis]),
+    [[-4, null]],
+  );
+  assert.equal(
+    position(`${header}\nS,10,2000\nS,-14,480`)?.unrealized_gain,
     null,
   );
-  // Two rows on the same side still add up.
+  assert.equal(stuck.notes.length, 1);
+  assert.match(
+    stuck.notes[0] ?? "",
+    /^S: .*both long and short.*cost basis.*blank/,
+  );
+  // Rows that net to nothing are left out, with no note about a holding that is not there.
+  const flat = parsePositionsCsv(
+    `${header}\nS,10,2000\nS,-14,480\nS,4,400\nB,1,10`,
+  );
+  assert.deepEqual(
+    flat.rows.map((r) => r.ticker),
+    ["B"],
+  );
+  assert.deepEqual(flat.notes, []);
+  // Two rows on the same side still add up as written.
   assert.equal(
     parsePositionsCsv(`${header}\nS,-5,600\nS,-5,600`).rows[0]?.costBasis,
     1200,

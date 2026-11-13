@@ -144,6 +144,7 @@ export function parsePositionsCsv(csv: string): ParsedCsv {
     };
   }
   const merged = new Map<string, ParsedHolding>();
+  const mixedSides = new Set<string>();
   const skipped: ParsedCsv["skipped"] = [];
   const notes: string[] = [];
   let columns: Columns | null = null;
@@ -284,27 +285,30 @@ export function parsePositionsCsv(csv: string): ParsedCsv {
     const key = `${holding.ticker}|${holding.accountLabel}`;
     const existing = merged.get(key);
     if (existing) {
-      // One holding has one basis, and a long cost plus short proceeds is the basis of neither
-      // side: it turned a $280 gain into a $680 loss. Unknown stays unknown for any later row.
-      if (
-        Math.sign(existing.quantity) !== Math.sign(holding.quantity) &&
-        existing.costBasis !== null &&
-        holding.costBasis !== null
-      ) {
-        notes.push(
-          `${holding.ticker}: this account lists it both long and short, so its combined cost basis is left blank and no gain is shown. Enter one basis by hand if you want a gain.`,
-        );
-        existing.costBasis = null;
+      let basis =
+        existing.costBasis === null || holding.costBasis === null
+          ? null
+          : existing.costBasis + holding.costBasis;
+      // A long row and a short row: the one basis is what the long cost less what the short sale
+      // brought in. A short's figure counts as negative however the file writes it, which is how
+      // computePortfolioFacts reads a short lot. Once the two sides are combined the stored basis
+      // is that signed figure, so every later row of the holding joins it the same way.
+      const alreadySigned = mixedSides.has(key);
+      if (Math.sign(existing.quantity) !== Math.sign(holding.quantity))
+        mixedSides.add(key);
+      if (basis !== null && mixedSides.has(key)) {
+        const signed = (h: ParsedHolding) =>
+          h.quantity >= 0 ? (h.costBasis ?? 0) : -Math.abs(h.costBasis ?? 0);
+        basis =
+          (alreadySigned ? (existing.costBasis ?? 0) : signed(existing)) +
+          signed(holding);
       }
       existing.quantity += holding.quantity;
       existing.marketValue =
         existing.marketValue === null || holding.marketValue === null
           ? null
           : existing.marketValue + holding.marketValue;
-      existing.costBasis =
-        existing.costBasis === null || holding.costBasis === null
-          ? null
-          : existing.costBasis + holding.costBasis;
+      existing.costBasis = basis;
     } else {
       merged.set(key, holding);
     }
@@ -315,6 +319,19 @@ export function parsePositionsCsv(csv: string): ParsedCsv {
     skipped.push({ row: holding.ticker, reason: "zero shares" });
     return false;
   });
+  for (const holding of rows) {
+    // A short's basis is read back as negative, so a net short cannot carry a positive one.
+    if (
+      !mixedSides.has(`${holding.ticker}|${holding.accountLabel}`) ||
+      holding.quantity >= 0 ||
+      (holding.costBasis ?? 0) <= 0
+    )
+      continue;
+    holding.costBasis = null;
+    notes.push(
+      `${holding.ticker}: ${holding.accountLabel ? `the account ${holding.accountLabel}` : "one account"} lists it both long and short, and the two cost figures do not combine into one this app can store, so its cost basis is left blank and no gain is shown.`,
+    );
+  }
   return {
     rows,
     skipped,
