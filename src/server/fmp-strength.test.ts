@@ -652,6 +652,30 @@ void test("fmp: the quote warm-up after a save stops at the first vendor failure
   );
 });
 
+void test("fmp: the quote warm-up goes on past a symbol the vendor refuses", async () => {
+  // A refusal comes back at once, with no retry wait, so stopping there would save nothing and
+  // leave every later holding without its first price.
+  const refusals = [
+    () => new Response(null, { status: 402 }),
+    () => new Response(null, { status: 403 }),
+    () => new Response(null, { status: 400 }),
+    () => Response.json({ "Error Message": "Not available on this plan." }),
+  ];
+  for (const refuse of refusals) {
+    await client.execute("DELETE FROM fmp_cache");
+    const calls = stubFmp((_, call) =>
+      call === 1 ? refuse() : Response.json([{ price: 100 }]),
+    );
+    await cacheMissingHoldingQuotes(["REFUSED", "BBB", "CCC"]);
+    assert.equal(calls.length, 3);
+    const cached = await latestCachedQuotes();
+    assert.deepEqual(
+      ["REFUSED", "BBB", "CCC"].map((ticker) => cached.has(ticker)),
+      [false, true, true],
+    );
+  }
+});
+
 void test("fmp: invalid stored quotes cannot hide an older usable quote or prevent refresh", async () => {
   for (const price of [null, 0, -1, "100"]) {
     await client.execute("DELETE FROM fmp_cache");

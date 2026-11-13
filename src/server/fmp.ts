@@ -14,6 +14,8 @@ let lastRequestAt = 0;
 let requestStart = Promise.resolve();
 
 export class FmpRateLimitError extends Error {}
+/** The vendor answered at once and said no: a symbol or plan problem, not an outage. */
+export class FmpRefusedError extends Error {}
 
 export function today() {
   return new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
@@ -80,7 +82,8 @@ async function fmpGet(
     !(endpoint === "quote" ? [404] : [402, 403, 404]).includes(res.status)
   ) {
     // The URL holds the API key, so errors name only the endpoint.
-    throw new Error(`FMP ${endpoint} for ${ticker} returned ${res.status}`);
+    const message = `FMP ${endpoint} for ${ticker} returned ${res.status}`;
+    throw res.status < 500 ? new FmpRefusedError(message) : new Error(message);
   }
 
   if (!validFmpPayload(endpoint, payload)) return payload;
@@ -113,7 +116,7 @@ function isFmpErrorPayload(payload: unknown) {
 /** Error bodies must never become day-long data; empty identity/quote responses can retry. */
 export function validFmpPayload(endpoint: string, payload: unknown) {
   if (isFmpErrorPayload(payload)) {
-    throw new Error("FMP returned an error payload");
+    throw new FmpRefusedError("FMP returned an error payload");
   }
   if (endpoint === "quote") return usableQuote(rows(payload)[0]);
   return endpoint !== "profile" || rows(payload).length > 0;
@@ -192,7 +195,9 @@ export async function cacheMissingHoldingQuotes(tickers: string[]) {
       if (ticker === "CASH" || usableQuote(cached.get(ticker))) continue;
       try {
         await fmpGet(ticker, "quote");
-      } catch {
+      } catch (error) {
+        // A refusal costs no wait, and the next symbol may be fine.
+        if (error instanceof FmpRefusedError) continue;
         // The existing missing-price notice is the fallback when the vendor is unavailable. Each
         // further ticker would wait out the same failure while the save that called this hangs.
         return;
