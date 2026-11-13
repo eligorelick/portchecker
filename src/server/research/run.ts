@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { z, type ZodType } from "zod";
 
 import { env } from "../../env.js";
@@ -99,22 +99,35 @@ const HEARTBEAT_MS = 60_000;
 const STALE_RUN_MS = 10 * 60_000; // a run silent for this long has crashed, however long it ran
 const STOP_CHECK_MS = 2_000;
 const STOP_GRACE_MS = 5_000; // for a review that is already saving when the stop arrives
+// A stopped run notices, waits out the grace and exits within the first two. The rest is margin.
+const STOP_SETTLE_MS = STOP_CHECK_MS + STOP_GRACE_MS + 5_000;
 const WEB_FINDING_MAX_AGE_DAYS = 45;
 const REVIEW_CONCURRENCY = 3;
 const RECENT_RESULTS_DAYS = 3;
 
-/** The run in progress, if any. Keeps a scheduled run and "Run research" from overlapping. */
+/**
+ * The run in progress, if any. Keeps a scheduled run and "Run research" from overlapping. A run
+ * stopped moments ago still counts: its process may be writing research files for a few seconds
+ * more, into the folders the next run would use.
+ */
 export async function activeRun() {
   const cutoff = new Date(Date.now() - STALE_RUN_MS).toISOString();
+  const settling = new Date(Date.now() - STOP_SETTLE_MS).toISOString();
   const [run] = await db
     .select()
     .from(researchRuns)
     .where(
-      and(
-        eq(researchRuns.status, "running"),
-        gt(
-          sql`coalesce(${researchRuns.heartbeatAt}, ${researchRuns.startedAt})`,
-          cutoff,
+      or(
+        and(
+          eq(researchRuns.status, "running"),
+          gt(
+            sql`coalesce(${researchRuns.heartbeatAt}, ${researchRuns.startedAt})`,
+            cutoff,
+          ),
+        ),
+        and(
+          eq(researchRuns.status, "stopped"),
+          gt(researchRuns.finishedAt, settling),
         ),
       ),
     )
@@ -123,11 +136,6 @@ export async function activeRun() {
   return run ?? null;
 }
 
-/**
- * The newest run as the app should describe it. A crash or reboot leaves the row as running, and
- * that must not lock the button. `message` is the last log line without its time, or without the
- * dash when that line is the end of a multi-line list of reviewer notes.
- */
 /**
  * Stops the run in progress. The run is another process, so this marks its row and the run, which
  * reads that row every couple of seconds, ends its model calls and exits. Marking the row first means
@@ -179,6 +187,12 @@ function watchForStop(runId: number) {
   return { signal: controller.signal, look };
 }
 
+/**
+ * The newest run as the app should describe it. A crash or reboot leaves the row as running, and
+ * that must not lock the button. A run stopped moments ago reads as stopping, since the next run
+ * cannot start until it has let go. `message` is the last log line without its time, or without the
+ * dash when that line is the end of a multi-line list of reviewer notes.
+ */
 export async function latestRun() {
   const [run] = await db
     .select()
@@ -189,12 +203,15 @@ export async function latestRun() {
   const stale =
     run.status === "running" &&
     Date.now() - Date.parse(run.heartbeatAt ?? run.startedAt) > STALE_RUN_MS;
+  const stopping =
+    run.status === "stopped" &&
+    Date.now() - Date.parse(run.finishedAt ?? "") < STOP_SETTLE_MS;
   const lastLine = stale
     ? "This run stopped without finishing."
     : (run.logText.trim().split("\n").pop() ?? "");
   return {
     ...run,
-    status: stale ? "failed" : run.status,
+    status: stale ? "failed" : stopping ? "stopping" : run.status,
     lastLine,
     message: lastLine
       .replace(/^(?:\d{1,2}:\d{2}:\d{2}|-) /, "")
@@ -288,11 +305,14 @@ export async function claimRun(
   startedAt = new Date().toISOString(),
 ) {
   const cutoff = new Date(Date.now() - STALE_RUN_MS).toISOString();
+  const settling = new Date(Date.now() - STOP_SETTLE_MS).toISOString();
   const result = await db.all<{
     id: number;
   }>(sql`INSERT INTO research_runs (started_at, heartbeat_at, status, provider_mode)
     SELECT ${startedAt}, ${startedAt}, 'running', ${providerMode}
-    WHERE NOT EXISTS (SELECT 1 FROM research_runs WHERE status = 'running' AND coalesce(heartbeat_at, started_at) > ${cutoff})
+    WHERE NOT EXISTS (SELECT 1 FROM research_runs
+      WHERE (status = 'running' AND coalesce(heartbeat_at, started_at) > ${cutoff})
+        OR (status = 'stopped' AND finished_at > ${settling}))
     RETURNING id`);
   return result[0] ?? null;
 }

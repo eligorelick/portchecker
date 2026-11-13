@@ -73,18 +73,30 @@ void test("runs: the message drops the log time", async () => {
   assert.equal((await latestRun())?.message, "AAA: analyzing.");
 });
 
-void test("runs: stopping marks the live run stopped, at once, and keeps its log", async () => {
+void test("runs: a stop shows at once, and the next run waits until the stopped one has let go", async () => {
   await running(minutesAgo(1), "10:00:00 AAA: analyzing.\n");
   assert.equal(await stopRun(), true);
+  const stopping = await latestRun();
+  assert.equal(stopping?.status, "stopping");
+  assert.ok(stopping?.finishedAt);
+  assert.equal(stopping?.message, "Stopped at your request.");
+  assert.match(stopping?.logText ?? "", /^10:00:00 AAA: analyzing\.\n/);
+  // The stopped process may still be writing its research files for a few seconds.
+  assert.ok(await activeRun());
+  assert.equal(await claimRun("chatgpt"), null);
+  assert.equal(
+    await stopRun(),
+    false,
+    "a run being stopped is not stopped twice",
+  );
+
+  mock.timers.tick(11_999);
+  assert.equal((await latestRun())?.status, "stopping");
+  assert.equal(await claimRun("chatgpt"), null);
+  mock.timers.tick(2);
+  assert.equal((await latestRun())?.status, "stopped");
   assert.equal(await activeRun(), null);
-  const run = await latestRun();
-  assert.equal(run?.status, "stopped");
-  assert.ok(run?.finishedAt);
-  assert.equal(run?.message, "Stopped at your request.");
-  assert.match(run?.logText ?? "", /^10:00:00 AAA: analyzing\.\n/);
   assert.ok(await claimRun("chatgpt"), "a stopped run does not block the next");
-  assert.equal(await stopRun(), true, "the new run can be stopped in turn");
-  assert.equal(await stopRun(), false, "nothing is left to stop");
 });
 
 void test("runs: stopping leaves a run that died long ago as it was", async () => {

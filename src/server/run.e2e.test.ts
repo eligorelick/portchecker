@@ -1969,7 +1969,7 @@ assert.equal(usage.outputTokens,44);
 );
 
 scenario(
-  "stopping a run ends its model calls, keeps the finished reviews and frees the button",
+  "stopping a run ends its model calls, keeps the finished reviews and then frees the button",
   String.raw`
 await holding('BBB');
 const { runsRouter } = await load('api/routers/runs.ts');
@@ -1998,12 +1998,16 @@ while (!(await rows("SELECT id FROM ticker_updates WHERE ticker='AAA'")).length)
   await new Promise((r) => realSetTimeout(r, 20));
 
 assert.deepEqual(await runs.stop(), { stopped: true });
-// At once, before the run itself has noticed: the page shows it stopped and a new run may start.
-assert.equal((await latestRun()).status, 'stopped');
-assert.equal(await activeRun(), null);
+// At once, before the run itself has noticed, the page shows the stop. The run may still be
+// writing its research files, so the next run has to wait for it.
+assert.equal((await latestRun()).status, 'stopping');
+assert.ok(await activeRun());
 assert.equal(await job, true);
 clearInterval(keepAlive);
 assert.equal(ended, true, 'the call in flight was not ended');
+mock.timers.tick(12_000);
+assert.equal((await latestRun()).status, 'stopped');
+assert.equal(await activeRun(), null);
 
 const stopped = await last('research_runs');
 assert.equal(stopped.status, 'stopped');

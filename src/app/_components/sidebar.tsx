@@ -245,9 +245,11 @@ function RunNow({ billingNote }: { billingNote: string | null }) {
   const stop = api.runs.stop.useMutation();
   const status = api.runs.status.useQuery(undefined, {
     refetchInterval: (query) =>
-      query.state.data?.status === "running" || requestedAfter !== null
-        ? 5000
-        : false,
+      query.state.data?.status === "stopping"
+        ? 2000
+        : query.state.data?.status === "running" || requestedAfter !== null
+          ? 5000
+          : false,
   });
   const launchProblem = api.runs.launchProblem.useQuery(undefined, {
     enabled: launchTimedOut,
@@ -382,6 +384,18 @@ function RunNow({ billingNote }: { billingNote: string | null }) {
             {stop.error.message}
           </p>
         )}
+      </div>
+    );
+  }
+
+  // The stopped run may still be writing its research files, so the next one is not offered yet.
+  if (run?.status === "stopping") {
+    return (
+      <div className="space-y-1.5" aria-live="polite">
+        <p className="text-sm font-medium">Stopping the run</p>
+        <p className="text-rail-muted text-xs">
+          Its AI calls are being ended. This takes a few seconds.
+        </p>
       </div>
     );
   }

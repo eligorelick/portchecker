@@ -656,6 +656,20 @@ void test("a run in progress can be stopped from the sidebar, and a stopped run 
 
     const kept =
       "Stopped at your request. 2 reviews finished before the stop and are saved. No brief was written.";
+    // For a few seconds the stopped run may still be writing, so no new run is offered yet.
+    fixture.run = {
+      id: 17,
+      status: "stopping",
+      startedAt: "2026-11-05T12:00:00Z",
+      finishedAt: "2026-11-05T12:10:00Z",
+      message: "Stopped at your request.",
+      lastLine: "10:10:00 Stopped at your request.",
+      progress: null,
+    };
+    const stopping = sidebar();
+    assert.match(stopping, /Stopping the run/);
+    assert.doesNotMatch(stopping, /<button[^>]*>(Stop|Run) research<\/button>/);
+
     fixture.run = {
       id: 17,
       status: "stopped",
