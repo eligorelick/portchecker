@@ -17,7 +17,11 @@ import {
   tickers,
   tickerUpdates,
 } from "../src/server/db/schema.ts";
-import { replaceCurrentView, saveDossier } from "../src/server/dossier.ts";
+import {
+  readThesis,
+  replaceCurrentView,
+  saveDossier,
+} from "../src/server/dossier.ts";
 import { today } from "../src/server/fmp.ts";
 import {
   dossierTemplate,
@@ -421,7 +425,11 @@ for (const d of demos) {
     runId,
     ticker: d.ticker,
     reviewDepth: verification ? "FULL" : "LIGHT",
-    resultJson: JSON.stringify(d.result),
+    // As a real review does, so the page does not say the thesis changed since.
+    resultJson: JSON.stringify({
+      ...d.result,
+      thesis_at_review: readThesis(d.ticker),
+    }),
     verificationJson: verification ? JSON.stringify(verification) : null,
     verifiedScore: score,
     analystProvider: model.provider,
