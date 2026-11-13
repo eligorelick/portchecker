@@ -333,6 +333,12 @@ export async function pruneFmpCache() {
     );
 }
 
+/** A YYYY-MM-DD that names a real day. Date.parse alone reads "2026-02-30" as March 2. */
+function isCalendarDay(day: string) {
+  const at = Date.parse(`${day}T00:00:00Z`);
+  return Number.isFinite(at) && new Date(at).toISOString().slice(0, 10) === day;
+}
+
 /** Newest first, one row a day, and a missing price is no price, not zero. */
 export function pricePoints(history: Row[]) {
   const byDate = new Map<string, number>();
@@ -341,8 +347,8 @@ export function pricePoints(history: Row[]) {
       typeof h.price === "number" || (typeof h.price === "string" && h.price)
         ? Number(h.price)
         : NaN;
-    // "undefined" would sort after every real date and become the latest price.
-    if (typeof h.date !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(h.date))
+    // "undefined", or a month 13, would sort after every real date and become the latest price.
+    if (typeof h.date !== "string" || !isCalendarDay(h.date.slice(0, 10)))
       continue;
     if (price > 0 && Number.isFinite(price) && !byDate.has(h.date))
       byDate.set(h.date, price);

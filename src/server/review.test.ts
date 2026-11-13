@@ -932,6 +932,25 @@ void test("price history is sorted, one row a day, and a missing price is no pri
   assert.equal(undated?.return_1d_pct, 10);
   assert.equal(undated?.low_1y, 100);
   assert.equal(undated?.trading_days, 2);
+  // Nor is a row whose date has the right shape but names no day. It would sort as the newest.
+  for (const noSuchDay of ["2026-13-45", "2026-02-30", "2026-11-31"]) {
+    const summary = priceSummary([
+      { date: noSuchDay, price: 5 },
+      { date: "2026-11-04", price: 110 },
+      { date: "2026-11-03", price: 100 },
+    ]);
+    assert.equal(summary?.latest_date, "2026-11-04", noSuchDay);
+    assert.equal(summary?.return_1d_pct, 10, noSuchDay);
+    assert.equal(summary?.trading_days, 2, noSuchDay);
+  }
+  // The vendor's date may carry a time after the day.
+  assert.equal(
+    priceSummary([
+      { date: "2026-11-04 00:00:00", price: 110 },
+      { date: "2026-11-03 00:00:00", price: 100 },
+    ])?.return_1d_pct,
+    10,
+  );
 });
 
 void test("relative returns need the same period on both sides", () => {

@@ -200,7 +200,8 @@ export async function syncFilings(
       // Both become part of file names in a pack, so neither may carry a path.
       if (!/^[\w-]+$/.test(accessionNo) || !/^\d{4}-\d{2}-\d{2}$/.test(filedAt))
         continue;
-      if (ageDays > HISTORY_DAYS) continue;
+      // A date with the right shape but no such day has no age, and must not pass as recent.
+      if (!Number.isFinite(ageDays) || ageDays > HISTORY_DAYS) continue;
       known.add(accessionNo);
       if (ANNUAL_FORMS.has(form)) annualReports += 1;
 

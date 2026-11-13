@@ -1323,6 +1323,8 @@ void test("a filing whose number or date could not be part of a file name is not
         ["..", "8-K", daysAgoIso(1)],
         ["0000000001-26-000002", "8-K", `../../${daysAgoIso(1)}`],
         ["0000000001-26-000003", "8-K", "not a date"],
+        // The right shape, but no such day: its age cannot be worked out, so nothing dates it.
+        ["0000000001-26-000005", "8-K", "2026-13-45"],
         ["0000000001-26-000004", "8-K", daysAgoIso(1)],
       ]),
     ),
