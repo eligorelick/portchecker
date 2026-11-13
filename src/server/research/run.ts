@@ -136,8 +136,7 @@ export async function activeRun() {
  */
 export async function stopRun() {
   const cutoff = new Date(Date.now() - STALE_RUN_MS).toISOString();
-  const line = `${new Date().toLocaleTimeString("en-US", { hour12: false })} Stopped at your request.
-`;
+  const line = `${new Date().toLocaleTimeString("en-US", { hour12: false })} Stopped at your request.\n`;
   const stopped = await db
     .update(researchRuns)
     .set({
@@ -158,23 +157,26 @@ export async function stopRun() {
   return stopped.length > 0;
 }
 
-/** Aborts its signal once this run's row says it was stopped. Stops asking when the run is over. */
+/**
+ * Aborts its signal once this run's row says it was stopped. It looks every couple of seconds until
+ * the run is over, and `look` asks now, for the moments when acting on an old answer would matter.
+ */
 function watchForStop(runId: number) {
   const controller = new AbortController();
-  const timer = setInterval(() => {
-    void db
+  const look = async () => {
+    const [row] = await db
       .select({ status: researchRuns.status })
       .from(researchRuns)
-      .where(eq(researchRuns.id, runId))
-      .then(([row]) => {
-        if (row?.status === "running") return;
-        clearInterval(timer);
-        if (row?.status === "stopped") controller.abort();
-      })
-      .catch(() => undefined);
+      .where(eq(researchRuns.id, runId));
+    if (row?.status === "running") return;
+    clearInterval(timer);
+    if (row?.status === "stopped") controller.abort();
+  };
+  const timer = setInterval(() => {
+    void look().catch(() => undefined);
   }, STOP_CHECK_MS);
   timer.unref();
-  return controller.signal;
+  return { signal: controller.signal, look };
 }
 
 export async function latestRun() {
@@ -1096,7 +1098,13 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
       .where(eq(researchRuns.id, run.id))
       .catch(() => undefined);
   }, HEARTBEAT_MS).unref();
-  const stop = watchForStop(run.id);
+  const stopWatch = watchForStop(run.id);
+  const stop = stopWatch.signal;
+  // The watch looks every two seconds. Before a step that cannot be taken back, ask now.
+  const haltIfStopped = async () => {
+    await stopWatch.look().catch(() => undefined);
+    stop.throwIfAborted();
+  };
   const stopped = new Promise<void>((resolve) =>
     stop.addEventListener("abort", () => resolve(), { once: true }),
   );
@@ -1311,6 +1319,8 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
       ]);
       stop.throwIfAborted();
     }
+    // A stop in the last two seconds has not been seen yet, and the brief is one more model call.
+    await haltIfStopped();
     outcomes.sort((a, b) => a.ticker.localeCompare(b.ticker));
 
     // With nothing reviewed, a brief would only spend a model call saying so.
@@ -1432,6 +1442,8 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
       untracedFigures: untraced,
     });
 
+    // Publishing starts here. A stop that arrived while the brief was being written still wins.
+    await haltIfStopped();
     const [briefRow] = await db
       .insert(briefs)
       .values({
@@ -1475,6 +1487,8 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
       .where(eq(researchRuns.id, runId));
     return true;
   } catch (error) {
+    // A failure moments after a stop is the stop, not a failed run.
+    await stopWatch.look().catch(() => undefined);
     if (stop.aborted) {
       // Whoever stopped the run has already marked it stopped. This adds what was kept.
       const saved = reviewed

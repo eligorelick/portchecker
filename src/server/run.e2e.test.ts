@@ -2053,3 +2053,50 @@ assert.equal((await rows('SELECT id FROM ticker_updates')).length, 0);
 assert.equal((await rows('SELECT id FROM briefs')).length, 0);
 `,
 );
+
+for (const ending of ["answers", "fails"] as const) {
+  scenario(
+    `a stop that lands while the brief is being written is honoured when the brief call ${ending}`,
+    String.raw`
+const { runsRouter } = await load('api/routers/runs.ts');
+const runs = runsRouter.createCaller({ db });
+// The brief call ends by itself, before the run's next look at its own row.
+const answer = globalThis.modelStub;
+globalThis.modelStub = async (opts) => {
+  if (opts.role !== 'brief') return answer(opts);
+  assert.deepEqual(await runs.stop(), { stopped: true });
+  if (${JSON.stringify(ending)} === 'fails') throw new Error('The provider dropped the call.');
+  return answer(opts);
+};
+assert.equal(await runResearch(), true);
+const stopped = await last('research_runs');
+assert.equal(stopped.status, 'stopped');
+assert.equal(stopped.brief_id, null);
+assert.match(stopped.log_text, /Stopped at your request\. 1 review finished before the stop and is saved\. No brief was written\.\n$/);
+assert.doesNotMatch(stopped.log_text, /Finished\.|Run failed/);
+assert.equal((await rows('SELECT id FROM briefs')).length, 0);
+assert.equal(existsSync(path.join('data/briefs', date + '.md')), false);
+assert.equal((await rows('SELECT id FROM ticker_updates')).length, 1);
+assert.equal(notices.length, 0);
+`,
+  );
+}
+
+scenario(
+  "a stop that lands as the last review finishes starts no brief",
+  String.raw`
+const { runsRouter } = await load('api/routers/runs.ts');
+const runs = runsRouter.createCaller({ db });
+const answer = globalThis.modelStub;
+globalThis.modelStub = async (opts) => {
+  if (opts.role === 'verifier') assert.deepEqual(await runs.stop(), { stopped: true });
+  return answer(opts);
+};
+assert.equal(await runResearch(), true);
+const stopped = await last('research_runs');
+assert.equal(stopped.status, 'stopped');
+assert.equal(roleCount('brief'), 0);
+assert.equal((await rows('SELECT id FROM briefs')).length, 0);
+assert.match(stopped.log_text, /Stopped at your request\. 1 review finished before the stop and is saved\. No brief was written\.\n$/);
+`,
+);
