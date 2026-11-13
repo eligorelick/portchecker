@@ -2,3 +2,4 @@ allowBuilds:
   esbuild: true
 overrides:
   postcss: ^8.5.23
+  "@esbuild-kit/core-utils>esbuild": 0.25.12

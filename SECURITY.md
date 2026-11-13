@@ -37,11 +37,12 @@ The requested file deny list includes existing environment, database, import, ba
 
 Filings, news and model output are untrusted input. Prompt rules and source checks reduce mistakes; they do not guarantee correct research or complete isolation. Check evidence before acting on a suggestion.
 
-## Dependency audit at initial publication
+## Dependency audit
 
-On 2026-11-06, `pnpm audit --prod` reported no known production-dependency advisories for the committed lockfile. The full audit reported two moderate advisories in development dependencies:
+On 2026-11-12, `pnpm audit --prod` reported no known production-dependency advisories for the committed lockfile. The full audit reported one moderate advisory in a development dependency:
 
-- **esbuild 0.18.20**, through Drizzle Kit's TypeScript loader: the advisory concerns the esbuild development server's cross-origin access. The loader uses esbuild for code transformation; Portchecker's development and production server commands use Next.js. Avoid using the affected esbuild `serve` feature for private files. See [GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99).
-- **minimatch 10.2.6**, through TypeScript ESLint tooling: attacker-controlled glob patterns can amplify CPU and memory use when `optimizationLevel >= 2`. Treat lint configuration and glob patterns as trusted development inputs. See [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+- **minimatch 10.2.6**, through TypeScript ESLint tooling: attacker-controlled glob patterns can amplify CPU and memory use when `optimizationLevel >= 2`. Treat lint configuration and glob patterns as trusted development inputs. See [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249). The newest typescript-eslint release still requires minimatch 10, so this waits for an upstream release. In the installed version that tooling passes patterns to minimatch only for its `allowDefaultProject` option, which Portchecker's ESLint configuration does not set.
 
-These development-dependency advisories remain unresolved in the lockfile. Re-run both audits when updating dependencies; this dated result is not an ongoing security guarantee.
+This advisory remains unresolved in the lockfile. A second advisory present at initial publication, for esbuild 0.18.20 reached through Drizzle Kit's TypeScript loader ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)), was cleared by an override in `pnpm-workspace.yaml` that gives the loader esbuild 0.25.12, the version Drizzle Kit itself uses. The override is outside the range the loader declares, so re-check `pnpm db:push` when updating Drizzle Kit.
+
+Re-run both audits when updating dependencies; this dated result is not an ongoing security guarantee.
