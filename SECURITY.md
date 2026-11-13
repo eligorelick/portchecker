@@ -4,7 +4,7 @@ Portchecker is a local, single-user app with no login. The start and development
 
 - Page and API requests must be addressed to `localhost`, `127.0.0.1`, `[::1]` or a hostname listed in `ALLOWED_HOSTS`, a comma-separated value read from the environment or `.env`. Built static files are checked the same way.
 - A request other than GET or HEAD whose Origin differs from the address it was sent to is refused.
-- A request to `/api/` that the browser's `Sec-Fetch-Site` header marks as coming from anywhere but the app's own pages or the address bar is refused, which stops a page on another site from calling the API with a GET.
+- A request to `/api/` that the browser's `Sec-Fetch-Site` header marks as coming from anywhere but the app's own pages or the address bar is refused, which stops a page on another site from calling the API with a GET. Browsers send that header only to `https` and loopback addresses, so this check does not apply to a hostname from `ALLOWED_HOSTS` that is reached over plain `http`.
 - Pages cannot be framed. Rendered images are restricted to local or embedded images, and plugins, a `<base>` pointing elsewhere and forms posting to another site are blocked. Responses carry `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`.
 
 A request that carries neither an Origin nor a `Sec-Fetch-Site` header, such as one from a script or command-line tool on the same machine, passes the second and third checks. These checks are not authentication. Anyone who can reach an allowed address can use the app, so enable network access only on a network you trust.
