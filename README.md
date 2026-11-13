@@ -38,7 +38,7 @@ flowchart LR
 
 On a quiet day a holding gets a light review instead of a full one. A light review that reports nothing new skips the second check. The holding page then keeps showing the last review that did say something, with its marks, and adds "Nothing new as of" with the time of the light one. A claim that had no second check is labelled "Not checked" ([how to read the labels](#read-the-results-correctly)).
 
-![A holding page of the demo: the suggestion, the second check's different answer, the proof strip and the chain from thesis to evidence](docs/demo-holding.png)
+![A holding page of the demo: the suggestion, the second check's different answer, the proof strip and the chain from thesis through evidence to conclusion](docs/demo-holding.png)
 
 ## How correctness is checked
 
