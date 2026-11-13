@@ -1790,8 +1790,11 @@ export async function runModel<S extends ZodType>(
 }
 
 export async function listClaudeModels(settings: Settings) {
+  // Claude Code has no command that lists the models a subscription may use, so unlike the two
+  // lists below this one is written out and needs a line when a model is released.
   if (settings.claude_auth_mode === "subscription")
     return [
+      "claude-fable-5-2",
       "claude-opus-5-5",
       "claude-sonnet-5-5",
       "claude-haiku-5-5",

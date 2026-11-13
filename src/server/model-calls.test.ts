@@ -1600,3 +1600,14 @@ assert.deepEqual(await listClaudeModels(settings), [
 ]);
 `,
 );
+
+runtimeScenario(
+  "claude subscription models: the current model of each family is offered",
+  String.raw`
+settings.claude_auth_mode='subscription'; settings.anthropic_api_key='';
+const ids = (await listClaudeModels(settings)).map(m=>m.id);
+for (const id of ['claude-fable-5-2','claude-opus-5-5','claude-sonnet-5-5','claude-haiku-5-5'])
+  assert.ok(ids.includes(id), id + ' is missing from the subscription list');
+assert.equal(new Set(ids).size, ids.length);
+`,
+);
