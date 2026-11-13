@@ -305,7 +305,7 @@ export const screenshotPickProblem = (count: number) =>
 
 /**
  * The extension a saved screenshot gets, or null when the upload is not one of the image types the
- * picker offers. A pasted image has no extension and is saved as PNG.
+ * picker offers. A name with no extension is saved as PNG.
  */
 export function screenshotExtension(name: string) {
   const ext = (/\.[^./\\]*$/.exec(name)?.[0] ?? ".png").toLowerCase();

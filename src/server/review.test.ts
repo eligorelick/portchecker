@@ -2468,7 +2468,7 @@ void test("a filing's own address is known from the filing files, not from pack.
   }
 });
 
-void test("saved evidence marks only news links absent from the research files", () => {
+void test("saved evidence marks links absent from the research files and leaves the rest alone", () => {
   assert.equal(typeof updateFunctions.markUnknownLinks, "function");
   const known = "https://example.com/article?x=1&y=2";
   const absent = "https://example.com/mistyped";
