@@ -1124,16 +1124,18 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
   const runFolder = packDir(date);
 
   let logText = "";
-  let logClosed = false;
-  const log = async (line: string) => {
-    // A review cut off by a stop may still report in. The stop's own line stays the last one.
-    if (logClosed) return;
+  const record = async (line: string) => {
     logText += `${new Date().toLocaleTimeString("en-US", { hour12: false })} ${line}\n`;
     console.log(line);
     await db
       .update(researchRuns)
       .set({ logText })
       .where(eq(researchRuns.id, runId));
+  };
+  // After a stop, a review whose call was ended still reports that step as failed and names the
+  // next one. Neither happened, so the log ends with what was true before the stop and its last line.
+  const log = async (line: string) => {
+    if (!stop.aborted) await record(line);
   };
 
   const usage: Usage = { inputTokens: 0, outputTokens: 0, webSearches: 0 };
@@ -1478,8 +1480,7 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
       const saved = reviewed
         ? `${reviewed} ${reviewed === 1 ? "review" : "reviews"} finished before the stop and ${reviewed === 1 ? "is" : "are"} saved.`
         : "No review had finished, so nothing new was saved.";
-      await log(`Stopped at your request. ${saved} No brief was written.`);
-      logClosed = true;
+      await record(`Stopped at your request. ${saved} No brief was written.`);
       await db
         .update(researchRuns)
         .set({ usageJson: JSON.stringify(usage) })

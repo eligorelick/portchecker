@@ -2046,6 +2046,9 @@ clearInterval(keepAlive);
 const stopped = await last('research_runs');
 assert.equal(stopped.status, 'stopped');
 assert.match(stopped.log_text, /Stopped at your request\. No review had finished, so nothing new was saved\. No brief was written\.\n$/);
+// The web search that was ended is not a failed search, and no analysis began after the stop.
+assert.match(stopped.log_text, /AAA: searching the web/);
+assert.doesNotMatch(stopped.log_text, /web research failed|analyzing/);
 assert.equal((await rows('SELECT id FROM ticker_updates')).length, 0);
 assert.equal((await rows('SELECT id FROM briefs')).length, 0);
 `,
