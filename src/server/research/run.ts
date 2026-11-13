@@ -1,10 +1,5 @@
 import { spawn } from "node:child_process";
-import {
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
