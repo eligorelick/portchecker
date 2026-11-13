@@ -2258,7 +2258,8 @@ void test("saved evidence marks an absent link however the source writes it", ()
       `${known}`,
       "file:pack.json#quote",
     ].map((source) => ({ ...evidence(source), source })),
-    JSON.stringify({ new_filings: [{ url: known }] }),
+    // The address as a pack carries it: in the header of a filing file.
+    `# 10-K filed 2026-02-01\n\nSource: edgar:0000000001-26-000001\nDocument: ${known}\n`,
   );
   assert.deepEqual(
     marked.map((item) => item.link_not_in_files ?? false),
@@ -2280,6 +2281,57 @@ void test("saved evidence marks an absent link however the source writes it", ()
       .map((item) => item.link_not_in_files ?? false),
     [true, true, false],
   );
+});
+
+void test("a filing's own address is known from the filing files, not from pack.json", () => {
+  const temp = mkdtempSync(path.join(tmpdir(), "portchecker-links-"));
+  try {
+    const accession = "0000000001-26-000001";
+    const folder =
+      "https://www.sec.gov/Archives/edgar/data/1/000000000126000001";
+    const invented = "https://files.example/invented";
+    // pack.json names a filing by accession only, as the pack writes it.
+    writeFileSync(
+      path.join(temp, "pack.json"),
+      JSON.stringify({
+        new_filings: [
+          {
+            form: "10-K",
+            filed_at: "2026-02-01",
+            source: `edgar:${accession}`,
+          },
+        ],
+      }),
+    );
+    writeFileSync(
+      path.join(temp, `filing_sections_10-K_2026-02-01_${accession}.md`),
+      `# 10-K filed 2026-02-01\n\nSource: edgar:${accession}\nDocument: ${folder}/a.htm\n`,
+    );
+    writeFileSync(
+      path.join(temp, `filing_exhibit_10-K_2026-02-01_${accession}.txt`),
+      `Exhibit source: ${folder}/ex13.htm\n`,
+    );
+    // The analyst's own output is not a research file: a link found only there stays unknown.
+    writeFileSync(
+      path.join(temp, "review.json"),
+      JSON.stringify({ evidence: [{ source: invented }] }),
+    );
+    const marked = updateFunctions.markUnknownLinks(
+      [
+        `edgar:${accession} ${folder}/a.htm`,
+        `${folder}/a.htm`,
+        `${folder}/ex13.htm`,
+        invented,
+      ].map((source) => ({ ...evidence(source), source })),
+      runFunctions.researchFilesText(temp),
+    );
+    assert.deepEqual(
+      marked.map((item) => item.link_not_in_files ?? false),
+      [false, false, false, true],
+    );
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
 });
 
 void test("saved evidence marks only news links absent from the research files", () => {

@@ -1,5 +1,10 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 
 import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
@@ -170,6 +175,22 @@ type TickerOutcome = {
   revisedAfterReview: boolean;
   previousAction?: string | null;
 };
+
+/**
+ * Everything the models were given for a review, to look a cited link up in. A filing's address is
+ * in its filing files, not in pack.json. review.json is the analyst's own answer, so it is left out.
+ */
+export function researchFilesText(dir: string) {
+  return readdirSync(dir, { withFileTypes: true })
+    .filter(
+      (file) =>
+        file.isFile() &&
+        /\.(json|md|txt)$/.test(file.name) &&
+        file.name !== "review.json",
+    )
+    .map((file) => readFileSync(path.join(dir, file.name), "utf8"))
+    .join("\n");
+}
 
 /** Keep stored checks in order, then show any evidence the verifier did not check. */
 export function proofChecks(update: Parameters<typeof evidenceEntries>[0]) {
@@ -1654,13 +1675,7 @@ async function reviewTicker(opts: {
     reviewDepth: depth,
     resultJson: JSON.stringify({
       ...result,
-      evidence: markUnknownLinks(
-        result.evidence,
-        ["pack.json", "web_research.md"]
-          .filter((name) => existsSync(path.join(dir, name)))
-          .map((name) => readFileSync(path.join(dir, name), "utf8"))
-          .join("\n"),
-      ),
+      evidence: markUnknownLinks(result.evidence, researchFilesText(dir)),
       is_fund: fmp.isFund,
       thesis_at_review: thesis,
       previous_action: previousAction,
