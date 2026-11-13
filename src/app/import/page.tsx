@@ -392,7 +392,7 @@ export default function ImportPage() {
           </p>
         </div>
         <div className="sheet">
-          <div className="text-muted border-line hidden grid-cols-[4.5rem_minmax(0,1fr)_6.5rem_7rem_11rem_8.5rem] gap-2 border-b px-3 py-2 text-xs sm:grid">
+          <div className="text-muted border-line hidden grid-cols-[4.5rem_minmax(0,1fr)_6.5rem_7rem_11rem_8.5rem] gap-2 border-b px-3 py-2 text-xs xl:grid">
             <span>Ticker</span>
             <span>Name</span>
             <span>Quantity</span>
@@ -478,14 +478,14 @@ function HoldingForm({ holding }: { holding?: Holding }) {
 
   const label = "text-muted block text-xs";
   // Phones keep 16px text, which stops the browser zooming in when a field gets focus.
-  const field = "field mt-0.5 sm:min-h-8 sm:py-0.5 sm:text-sm";
-  const hide = holding ? "sm:sr-only" : "";
+  const field = "field mt-0.5 xl:min-h-8 xl:py-0.5 xl:text-sm";
+  const hide = holding ? "xl:sr-only" : "";
   const rowName = holding
     ? `${holding.ticker}${holding.accountLabel ? ` in ${holding.accountLabel}` : ""}`
     : "";
   return (
     <form
-      className={`grid grid-cols-2 items-center gap-2 px-3 py-2 sm:grid-cols-[4.5rem_minmax(0,1fr)_6.5rem_7rem_11rem_8.5rem] ${
+      className={`grid grid-cols-2 items-center gap-2 px-3 py-2 xl:grid-cols-[4.5rem_minmax(0,1fr)_6.5rem_7rem_11rem_8.5rem] ${
         holding ? "" : "items-end px-2"
       }`}
       onSubmit={async (e) => {
@@ -555,7 +555,7 @@ function HoldingForm({ holding }: { holding?: Holding }) {
           />
         </label>
       )}
-      <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1">
+      <div className="col-span-2 flex flex-wrap items-center gap-2 xl:col-span-1">
         {confirmingDelete && holding ? (
           <>
             <button
