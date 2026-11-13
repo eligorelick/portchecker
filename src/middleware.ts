@@ -54,6 +54,8 @@ export function middleware(req: NextRequest) {
   return res;
 }
 
+// Only the built files are skipped. The slash matters: without it "/_next/staticfoo" was skipped
+// too, and Next answers that with the not-found page, sidebar and holdings included.
 export const config = {
-  matcher: "/((?!_next/static|_next/image).*)",
+  matcher: "/((?!_next/static/).*)",
 };

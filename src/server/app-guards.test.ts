@@ -75,7 +75,8 @@ const { createTRPCContext, createTRPCRouter, publicProcedure, tickerInput } =
   await import("./api/trpc.ts");
 const { client } = await import("./db/index.ts");
 const { today } = await import("./fmp.ts");
-const { middleware } = await import("../middleware.ts");
+const { middleware, config: middlewareConfig } =
+  await import("../middleware.ts");
 const { NextRequest } = await import("next/server.js");
 
 const TABLES = [
@@ -327,6 +328,32 @@ void test("a page on another site cannot make the API run with a GET", async () 
     assert.equal(get("/api/trpc/settings.codexStatus", site).status, 200);
   // Following a link from another site to a page is ordinary navigation.
   assert.equal(get("/holdings", "cross-site").status, 200);
+});
+
+void test("only the built static files skip the request checks", () => {
+  // Next runs the middleware for a path the whole matcher matches. A path that merely starts like
+  // the static folder is answered with the not-found page, which shows the holdings in the sidebar,
+  // so it must be checked like any page.
+  const checked = (pathname: string) =>
+    new RegExp(`^${middlewareConfig.matcher}$`).test(pathname);
+  for (const pathname of [
+    "/",
+    "/holdings",
+    "/api/trpc/settings.get",
+    "/_next/staticfoo",
+    "/_next/static",
+    "/_next/image",
+    "/_next/image/x",
+    "/_next/imagefoo",
+    "/_next/data/x.json",
+  ])
+    assert.equal(checked(pathname), true, pathname);
+  for (const pathname of [
+    "/_next/static/chunks/main.js",
+    "/_next/static/css/app.css",
+    "/_next/static/media/font.woff2",
+  ])
+    assert.equal(checked(pathname), false, pathname);
 });
 
 void test("the host and origin checks still refuse before anything else", async () => {
