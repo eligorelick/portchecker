@@ -630,6 +630,40 @@ void test("an open call stays visible until it is decided or replaced", () => {
   assert.deepEqual(open.map((u) => u.ticker).sort(), ["BEFORE", "OLD"]);
 });
 
+void test("a decided brief entry does not hide a newer call on the same holding", () => {
+  const update = (ticker: string, action: string, createdAt: string) =>
+    [ticker, { ticker, runId: 16, createdAt, result: { action } }] as const;
+  const updates = new Map([
+    // Reviewed again after I acted on the brief's call: this sell is new and undecided.
+    update("REDONE", "sell", "2026-11-03T15:00:00Z"),
+    // The brief's own review, decided afterwards.
+    update("DONE", "trim", "2026-11-03T10:00:00Z"),
+    // Still open in the brief, which already shows it and says a newer review exists.
+    update("WAITING", "sell", "2026-11-03T15:00:00Z"),
+  ]) as unknown as Map<string, UpdateView>;
+  const logged = (ticker: string) => ({
+    ticker,
+    date: "2026-11-03",
+    actionTaken: "Trimmed",
+    note: "",
+    createdAt: "2026-11-03T12:00:00Z",
+  });
+  const open = openCalls(
+    [
+      { ticker: "REDONE", decision: logged("REDONE") },
+      { ticker: "DONE", decision: logged("DONE") },
+      { ticker: "WAITING", decision: null },
+    ],
+    updates,
+    [logged("REDONE"), logged("DONE")],
+    new Set(["REDONE", "DONE", "WAITING"]),
+  );
+  assert.deepEqual(
+    open.map((u) => u.ticker),
+    ["REDONE"],
+  );
+});
+
 void test("self-checking is only worth saying in Both mode", () => {
   const update = {
     usedFallback: true,

@@ -293,17 +293,21 @@ export function needsRevision(verification: VerifierResult) {
 }
 
 /**
- * Reviews on screen that need attention, are not in the brief's queue, and have no decision logged
- * since. Without this a call can vanish from Today while the sidebar still shows it: the brief
- * failed, this ticker failed in a later run, or a run reviewed only some holdings.
+ * Reviews on screen that need attention, are not waiting in the brief's queue, and have no decision
+ * logged since. Without this a call can vanish from Today while the sidebar still shows it: the
+ * brief failed, this ticker failed in a later run, or a run reviewed only some holdings.
  */
 export function openCalls(
-  queue: Pick<QueueItem, "ticker">[],
+  queue: (Pick<QueueItem, "ticker"> & Partial<Pick<QueueItem, "decision">>)[],
   updates: Map<string, UpdateView>,
   decisionRows: { ticker: string; date: string; createdAt?: string | null }[],
   held: Set<string>,
 ) {
-  const queued = new Set(queue.map((item) => item.ticker));
+  // Only an entry still open covers its ticker. Once I have logged a decision on it, a review
+  // made after that decision is a new call, and the decision test below is what settles it.
+  const queued = new Set(
+    queue.filter((item) => !item.decision).map((item) => item.ticker),
+  );
   return [...updates.values()].filter(
     (update) =>
       (update.result.action !== "hold" ||
