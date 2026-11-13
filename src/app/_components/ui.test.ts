@@ -1526,6 +1526,44 @@ void test("decided Today rows keep full-strength text and their logged decision"
   assert.match(html, /1 of 1 decided/);
 });
 
+void test("a brief's action is not shown beside the marks of a newer review", async () => {
+  resetPageFixture();
+  // The brief said trim. A later run, which wrote no brief, says hold, and its check agrees.
+  pageFixture.queue = [{ ...queueItem(), action: "trim" }];
+  pageFixture.openCount = 1;
+  const later = review();
+  later.runId = 2;
+  later.result.evidence = [
+    {
+      claim: "Price is 10",
+      source: "file:pack.json#quote",
+      date: "2026-11-05",
+    },
+  ];
+  later.verification!.checks = [
+    {
+      claim: "Price is 10",
+      verdict: "verified",
+      source: "file:pack.json#quote",
+      note: "",
+    },
+  ];
+  pageFixture.updates.set("AAA", later);
+  const row = async () =>
+    /<summary[\s\S]*?<\/summary>/.exec(await renderToday())?.[0] ?? "";
+  const stale = await row();
+  assert.match(stale, />Trim<\/span>/);
+  assert.match(stale, /Newer research suggests hold/i);
+  // "Trim, Models agree, 1 of 1 claims verified" would read as a trim that was checked.
+  assert.doesNotMatch(stale, /Models agree/);
+  assert.doesNotMatch(stale, /claims verified/);
+  // A row whose review is the brief's own keeps its marks.
+  later.runId = 1;
+  const current = await row();
+  assert.match(current, /Models agree/);
+  assert.match(current, /1 of 1 claims verified/);
+});
+
 void test("Today explains untraceable figures only when any were saved", async () => {
   resetPageFixture();
   const clean = await renderToday();

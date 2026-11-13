@@ -393,7 +393,9 @@ export default async function TodayPage() {
                                 {words(item.urgency)}
                               </span>
                             )}
-                            {update && (
+                            {/* These marks belong to the review on screen. When that is newer
+                                than the brief, they would vouch for an action it did not make. */}
+                            {update && !newer && (
                               <span className="flex flex-wrap items-center gap-x-3 sm:ml-auto">
                                 <AgreeBadge
                                   opinion={secondOpinion(update)}
