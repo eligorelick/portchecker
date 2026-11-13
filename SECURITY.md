@@ -1,10 +1,17 @@
 # Security and privacy
 
-Portchecker is a local, single-user app with no login. The start and development commands bind to `127.0.0.1`. Requests must use a local hostname or one listed in `ALLOWED_HOSTS`; writes with a different Origin are refused. Pages cannot be framed, and rendered images are restricted to local or embedded images. These checks are not authentication. Anyone who can reach an allowed address can use the app, so enable network access only on a network you trust.
+Portchecker is a local, single-user app with no login. The start and development commands bind to `127.0.0.1`. The app applies these request checks:
+
+- Page and API requests must be addressed to `localhost`, `127.0.0.1`, `[::1]` or a hostname listed in `ALLOWED_HOSTS`, a comma-separated value read from the environment or `.env`. Built static files under `/_next/static` and `/_next/image` are served without that check.
+- A request other than GET or HEAD whose Origin differs from the address it was sent to is refused.
+- A request to `/api/` that the browser's `Sec-Fetch-Site` header marks as coming from anywhere but the app's own pages or the address bar is refused, which stops a page on another site from calling the API with a GET.
+- Pages cannot be framed. Rendered images are restricted to local or embedded images, and plugins, a `<base>` pointing elsewhere and forms posting to another site are blocked. Responses carry `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`.
+
+A request that carries neither an Origin nor a `Sec-Fetch-Site` header, such as one from a script or command-line tool on the same machine, passes the second and third checks. These checks are not authentication. Anyone who can reach an allowed address can use the app, so enable network access only on a network you trust.
 
 ## Stored on your machine
 
-The SQLite database holds positions, decisions, settings and research history. A Claude key saved in Settings is stored there as plain text. Environment keys are in `.env`. The app masks credentials in Settings responses and scrubs configured keys from provider errors; that does not encrypt files or backups.
+The SQLite database holds positions, decisions, settings and research history. A Claude key saved in Settings is stored there as plain text. Environment keys are in `.env`. The app masks credentials in Settings responses, scrubs configured keys from provider errors and reports a failed settings save without the key; that does not encrypt files or backups.
 
 `data/` also holds dossiers, briefs, research packs, imported CSVs, screenshots and run logs. Dossiers and packs can contain your thesis, position sizes, cost basis and portfolio values. Imports can contain account details. Screenshot files are saved before extraction and remain even if you cancel the preview. There is no automatic pruning of dated packs or imports.
 
@@ -20,7 +27,7 @@ Screenshot extraction sends the entire image to the selected provider before con
 
 Claude Code owns subscription sign-in and credential storage; Portchecker stores only the authentication-mode choice. It does not copy OAuth credentials into its database. API keys and API-routing environment overrides are removed from the CLI child environment, and native subscription readiness is checked before each call. Existing API keys remain saved for the separate API option. Subscription usage counts against the plan's limits; Claude Code's own extra-usage settings govern possible additional charges.
 
-The CLI is started in safe and restricted modes with customizations disabled and no MCP configuration. File calls receive only Read, Grep and Glob; web calls receive only WebSearch and WebFetch. The app supplies no write or command tools and permits no interactive approval. Restricted mode requests that file tools stay within the working directories. These are CLI-enforced controls; offline tests verify the app's flags and routing, not a comprehensive adversarial proof of the installed CLI. Managed administrator policy can still apply.
+The CLI is started in safe and restricted modes with customizations disabled and no MCP configuration. File calls receive only Read, Grep and Glob; web calls receive only WebSearch and WebFetch. The app supplies no write or command tools and permits no interactive approval. Restricted mode requests that file tools stay within the working directories. WebFetch retrieves addresses the model chooses; whether the CLI refuses addresses on this machine or its local network has not been tested. These are CLI-enforced controls; offline tests verify the app's flags and routing, not a comprehensive adversarial proof of the installed CLI. Managed administrator policy can still apply.
 
 ## Codex access limits
 
