@@ -312,6 +312,17 @@ export function screenshotExtension(name: string) {
   return [".png", ".jpg", ".jpeg", ".webp"].includes(ext) ? ext : null;
 }
 
+/** Screenshots can show account details, so the preview says when the other provider read them. */
+export const screenshotFallbackNotes = (
+  usedFallback: boolean,
+  provider: string,
+) =>
+  usedFallback
+    ? [
+        `${provider === "claude" ? "Claude" : "ChatGPT"} read these images, because the selected provider failed and "If one fails, use the other" is on in Settings.`,
+      ]
+    : [];
+
 /**
  * A number typed into a holding's form, or null. Number() alone would take 0x10 as 16. Exponents
  * stay, because the form fills itself from the stored value and String(1e21) has one.

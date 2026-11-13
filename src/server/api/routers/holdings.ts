@@ -22,7 +22,11 @@ import {
   screenshotPositionsToCsv,
 } from "~/server/csv";
 import { IMPORTS_DIR, runModel } from "~/server/model";
-import { MAX_SCREENSHOTS, screenshotExtension } from "~/server/queue";
+import {
+  MAX_SCREENSHOTS,
+  screenshotExtension,
+  screenshotFallbackNotes,
+} from "~/server/queue";
 import { SCREENSHOT_PROMPT, screenshotSchema } from "~/server/research/prompts";
 import { holdings } from "~/server/db/schema";
 import { cacheMissingHoldingQuotes } from "~/server/fmp";
@@ -104,7 +108,10 @@ export const holdingsRouter = createTRPCRouter({
       const { csv, notes } = screenshotPositionsToCsv(result.data);
       return {
         csv,
-        notes,
+        notes: [
+          ...notes,
+          ...screenshotFallbackNotes(result.usedFallback, result.provider),
+        ],
         fileName: `positions-from-screenshots-${stamp}.csv`,
       };
     }),

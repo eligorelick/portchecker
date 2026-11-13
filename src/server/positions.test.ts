@@ -35,6 +35,7 @@ import {
   rowCount,
   rowTextAfterChange,
   screenshotExtension,
+  screenshotFallbackNotes,
   screenshotPickProblem,
 } from "./queue.ts";
 import { dossierTemplate } from "./research/prompts.ts";
@@ -2075,6 +2076,19 @@ void test("a screenshot upload that is not an image file is refused before anyth
     // Refused before it wrote the images or reached a model.
     assert.equal(existsSync(path.join("data", "imports")), false);
   });
+});
+
+void test("the screenshot preview says when the other provider read the images", () => {
+  assert.deepEqual(screenshotFallbackNotes(false, "claude"), []);
+  assert.deepEqual(screenshotFallbackNotes(true, "claude"), [
+    'Claude read these images, because the selected provider failed and "If one fails, use the other" is on in Settings.',
+  ]);
+  assert.match(screenshotFallbackNotes(true, "chatgpt")[0]!, /^ChatGPT read/);
+  // The route adds it to the notes the preview already lists.
+  assert.match(
+    readFileSync(new URL("./api/routers/holdings.ts", import.meta.url), "utf8"),
+    /\.\.\.screenshotFallbackNotes\(result\.usedFallback, result\.provider\)/,
+  );
 });
 
 void test("changing the break conditions asks for a full review, and other edits do not", async () => {
