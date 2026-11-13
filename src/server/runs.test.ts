@@ -10,6 +10,7 @@ import {
   renderBriefMarkdown,
   resultsDateFor,
   reviewDepth,
+  stopRun,
   unusablePass,
   withCodeScores,
   fundWeightConditionIssues,
@@ -70,6 +71,32 @@ void test("runs: a run that checked in recently still holds the button", async (
 void test("runs: the message drops the log time", async () => {
   await running(minutesAgo(1), "10:00:00 AAA: analyzing.\n");
   assert.equal((await latestRun())?.message, "AAA: analyzing.");
+});
+
+void test("runs: stopping marks the live run stopped, at once, and keeps its log", async () => {
+  await running(minutesAgo(1), "10:00:00 AAA: analyzing.\n");
+  assert.equal(await stopRun(), true);
+  assert.equal(await activeRun(), null);
+  const run = await latestRun();
+  assert.equal(run?.status, "stopped");
+  assert.ok(run?.finishedAt);
+  assert.equal(run?.message, "Stopped at your request.");
+  assert.match(run?.logText ?? "", /^10:00:00 AAA: analyzing\.\n/);
+  assert.ok(await claimRun("chatgpt"), "a stopped run does not block the next");
+  assert.equal(await stopRun(), true, "the new run can be stopped in turn");
+  assert.equal(await stopRun(), false, "nothing is left to stop");
+});
+
+void test("runs: stopping leaves a run that died long ago as it was", async () => {
+  await running(minutesAgo(11), "10:00:00 AAA: analyzing.\n");
+  assert.equal(await stopRun(), false);
+  const rows = await client.execute(
+    "SELECT status, finished_at, log_text FROM research_runs",
+  );
+  assert.deepEqual(
+    rows.rows.map((r) => [r.status, r.finished_at, r.log_text]),
+    [["running", null, "10:00:00 AAA: analyzing.\n"]],
+  );
 });
 
 const fmp = (overrides: Record<string, unknown>) =>

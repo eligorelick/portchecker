@@ -177,7 +177,7 @@ const modules: Record<string, string> = {
     export const requestFullReview = async () => {};
     export const packDir = () => ${JSON.stringify(path.join(scratch, "test"))};
   `,
-  "~/server/research/run": `export {proofChecks,verifiedScore} from ${actual("server/research/run.ts")}; export const latestRun = async () => globalThis.shellFixture.run; export const activeRun = async () => null;`,
+  "~/server/research/run": `export {proofChecks,verifiedScore} from ${actual("server/research/run.ts")}; export const latestRun = async () => globalThis.shellFixture.run; export const activeRun = async () => null; export const stopRun = async () => false;`,
   "shell-test:env": `export const env = {DATABASE_PATH:${JSON.stringify(process.env.DATABASE_PATH)},NODE_ENV:'test'};`,
 };
 // The installed Node types predate synchronous module hooks.

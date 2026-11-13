@@ -10,7 +10,7 @@ import path from "node:path";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { runProgress } from "~/server/queue";
-import { activeRun, latestRun } from "~/server/research/run";
+import { activeRun, latestRun, stopRun } from "~/server/research/run";
 import { env } from "~/env";
 import { errorMessage } from "~/server/model";
 import { claudeApiKey, getSettings } from "~/server/settings";
@@ -69,6 +69,9 @@ export const runsRouter = createTRPCRouter({
     }
     return { started: true };
   }),
+
+  // The run is a separate process that outlives this one, so closing the app does not end it.
+  stop: publicProcedure.mutation(async () => ({ stopped: await stopRun() })),
 
   launchProblem: publicProcedure.query(async () => {
     let text: string;

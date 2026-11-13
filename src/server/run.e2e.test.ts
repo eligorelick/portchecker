@@ -1967,3 +1967,86 @@ assert.equal(usage.cacheCreationInputTokens,160);
 assert.equal(usage.outputTokens,44);
 `,
 );
+
+scenario(
+  "stopping a run ends its model calls, keeps the finished reviews and frees the button",
+  String.raw`
+await holding('BBB');
+const { runsRouter } = await load('api/routers/runs.ts');
+const { activeRun, latestRun } = await load('research/run.ts');
+const runs = runsRouter.createCaller({ db });
+assert.deepEqual(await runs.stop(), { stopped: false }, 'nothing is running yet');
+
+// AAA is answered as usual. BBB's analyst never answers until the run ends the call.
+const answer = globalThis.modelStub;
+let ended = false, asked;
+const midCall = new Promise((resolve) => { asked = resolve; });
+globalThis.modelStub = (opts) => {
+  const file = path.join(opts.workingDirectory, 'pack.json');
+  const ticker = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')).ticker : null;
+  if (ticker !== 'BBB' || opts.role !== 'analyst') return answer(opts);
+  return new Promise((_, reject) => {
+    opts.signal.addEventListener('abort', () => { ended = true; reject(new Error('ended')); });
+    asked();
+  });
+};
+// The run's check for a stop does not hold the process open, and here nothing else does.
+const keepAlive = setInterval(() => {}, 1000);
+const job = runResearch();
+await midCall;
+while (!(await rows("SELECT id FROM ticker_updates WHERE ticker='AAA'")).length)
+  await new Promise((r) => realSetTimeout(r, 20));
+
+assert.deepEqual(await runs.stop(), { stopped: true });
+// At once, before the run itself has noticed: the page shows it stopped and a new run may start.
+assert.equal((await latestRun()).status, 'stopped');
+assert.equal(await activeRun(), null);
+assert.equal(await job, true);
+clearInterval(keepAlive);
+assert.equal(ended, true, 'the call in flight was not ended');
+
+const stopped = await last('research_runs');
+assert.equal(stopped.status, 'stopped');
+assert.ok(stopped.finished_at);
+assert.match(stopped.log_text, /Stopped at your request\. 1 review finished before the stop and is saved\. No brief was written\.\n$/);
+assert.doesNotMatch(stopped.log_text, /FAILED|Run failed/);
+assert.equal((await latestRun()).message, 'Stopped at your request. 1 review finished before the stop and is saved. No brief was written.');
+assert.deepEqual((await rows('SELECT ticker FROM ticker_updates')).map((r) => r.ticker), ['AAA']);
+assert.equal((await rows('SELECT id FROM briefs')).length, 0);
+assert.equal(roleCount('brief'), 0);
+assert.equal(notices.length, 0, 'a stop the owner asked for needs no notification');
+
+// The next run starts normally and reviews what the stop left out.
+assert.deepEqual(await runs.stop(), { stopped: false });
+globalThis.modelStub = answer;
+await run();
+assert.equal((await rows("SELECT id FROM ticker_updates WHERE ticker='BBB'")).length, 1);
+assert.equal((await rows("SELECT id FROM research_runs WHERE status='stopped'")).length, 1);
+`,
+);
+
+scenario(
+  "a stop before any review finishes saves nothing new and says so",
+  String.raw`
+const { runsRouter } = await load('api/routers/runs.ts');
+const runs = runsRouter.createCaller({ db });
+let asked;
+const midCall = new Promise((resolve) => { asked = resolve; });
+globalThis.modelStub = (opts) =>
+  new Promise((_, reject) => {
+    opts.signal.addEventListener('abort', () => reject(new Error('ended')));
+    asked();
+  });
+const keepAlive = setInterval(() => {}, 1000);
+const job = runResearch();
+await midCall;
+assert.deepEqual(await runs.stop(), { stopped: true });
+assert.equal(await job, true);
+clearInterval(keepAlive);
+const stopped = await last('research_runs');
+assert.equal(stopped.status, 'stopped');
+assert.match(stopped.log_text, /Stopped at your request\. No review had finished, so nothing new was saved\. No brief was written\.\n$/);
+assert.equal((await rows('SELECT id FROM ticker_updates')).length, 0);
+assert.equal((await rows('SELECT id FROM briefs')).length, 0);
+`,
+);

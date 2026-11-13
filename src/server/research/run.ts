@@ -97,6 +97,8 @@ const FIVE_DAY_MOVE_PCT = 10;
 const FULL_REVIEW_EVERY_DAYS = 7;
 const HEARTBEAT_MS = 60_000;
 const STALE_RUN_MS = 10 * 60_000; // a run silent for this long has crashed, however long it ran
+const STOP_CHECK_MS = 2_000;
+const STOP_GRACE_MS = 5_000; // for a review that is already saving when the stop arrives
 const WEB_FINDING_MAX_AGE_DAYS = 45;
 const REVIEW_CONCURRENCY = 3;
 const RECENT_RESULTS_DAYS = 3;
@@ -126,6 +128,55 @@ export async function activeRun() {
  * that must not lock the button. `message` is the last log line without its time, or without the
  * dash when that line is the end of a multi-line list of reviewer notes.
  */
+/**
+ * Stops the run in progress. The run is another process, so this marks its row and the run, which
+ * reads that row every couple of seconds, ends its model calls and exits. Marking the row first means
+ * the page shows the stop at once and a run that has already died is freed too. Reviews that finished
+ * before the stop were saved as they finished, and stay.
+ */
+export async function stopRun() {
+  const cutoff = new Date(Date.now() - STALE_RUN_MS).toISOString();
+  const line = `${new Date().toLocaleTimeString("en-US", { hour12: false })} Stopped at your request.
+`;
+  const stopped = await db
+    .update(researchRuns)
+    .set({
+      status: "stopped",
+      finishedAt: new Date().toISOString(),
+      logText: sql`coalesce(${researchRuns.logText}, '') || ${line}`,
+    })
+    .where(
+      and(
+        eq(researchRuns.status, "running"),
+        gt(
+          sql`coalesce(${researchRuns.heartbeatAt}, ${researchRuns.startedAt})`,
+          cutoff,
+        ),
+      ),
+    )
+    .returning({ id: researchRuns.id });
+  return stopped.length > 0;
+}
+
+/** Aborts its signal once this run's row says it was stopped. Stops asking when the run is over. */
+function watchForStop(runId: number) {
+  const controller = new AbortController();
+  const timer = setInterval(() => {
+    void db
+      .select({ status: researchRuns.status })
+      .from(researchRuns)
+      .where(eq(researchRuns.id, runId))
+      .then(([row]) => {
+        if (row?.status === "running") return;
+        clearInterval(timer);
+        if (row?.status === "stopped") controller.abort();
+      })
+      .catch(() => undefined);
+  }, STOP_CHECK_MS);
+  timer.unref();
+  return controller.signal;
+}
+
 export async function latestRun() {
   const [run] = await db
     .select()
@@ -1045,6 +1096,10 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
       .where(eq(researchRuns.id, run.id))
       .catch(() => undefined);
   }, HEARTBEAT_MS).unref();
+  const stop = watchForStop(run.id);
+  const stopped = new Promise<void>((resolve) =>
+    stop.addEventListener("abort", () => resolve(), { once: true }),
+  );
 
   // Fail fast, with a message the dashboard can show.
   const problems = await setupProblems(settings);
@@ -1069,7 +1124,10 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
   const runFolder = packDir(date);
 
   let logText = "";
+  let logClosed = false;
   const log = async (line: string) => {
+    // A review cut off by a stop may still report in. The stop's own line stays the last one.
+    if (logClosed) return;
     logText += `${new Date().toLocaleTimeString("en-US", { hour12: false })} ${line}\n`;
     console.log(line);
     await db
@@ -1082,6 +1140,7 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
   const callModel: ModelCaller = async (step, opts) => {
     const r = await runModel({
       ...opts,
+      signal: stop,
       onUsage: (delta) => {
         addUsage(usage, delta);
       },
@@ -1136,6 +1195,7 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
 
     // Fetch market data first: the analyst prompt needs each position's portfolio weight.
     for (const ticker of stockTickers) {
+      stop.throwIfAborted();
       try {
         const row = await ensureTicker(ticker, names.get(ticker) ?? ticker);
         sectors.set(ticker, row.sector);
@@ -1219,7 +1279,10 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
             callModel,
           }),
         );
+        reviewed = outcomes.length;
       } catch (error) {
+        // Its model call was ended on purpose, so this is not a failure to report.
+        if (stop.aborted) return;
         const reason = errorMessage(error);
         failed.push({ ticker, reason });
         await log(`${ticker}: FAILED. ${reason}`);
@@ -1231,13 +1294,22 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
       }
     };
     // A few at a time: one review waits minutes on models, so this mostly saves idle time.
-    await Promise.all(
+    const reviews = Promise.all(
       Array.from({ length: REVIEW_CONCURRENCY }, async () => {
-        for (let t = queue.shift(); t; t = queue.shift()) await reviewNext(t);
+        for (let t = queue.shift(); t && !stop.aborted; t = queue.shift())
+          await reviewNext(t);
       }),
     );
+    await Promise.race([reviews, stopped]);
+    if (stop.aborted) {
+      // The reviews whose calls were just ended finish at once. Wait briefly for any that is saving.
+      await Promise.race([
+        reviews,
+        new Promise((resolve) => setTimeout(resolve, STOP_GRACE_MS)),
+      ]);
+      stop.throwIfAborted();
+    }
     outcomes.sort((a, b) => a.ticker.localeCompare(b.ticker));
-    reviewed = outcomes.length;
 
     // With nothing reviewed, a brief would only spend a model call saying so.
     if (!outcomes.length) {
@@ -1401,6 +1473,19 @@ export async function runResearch(only: string[] = []): Promise<boolean> {
       .where(eq(researchRuns.id, runId));
     return true;
   } catch (error) {
+    if (stop.aborted) {
+      // Whoever stopped the run has already marked it stopped. This adds what was kept.
+      const saved = reviewed
+        ? `${reviewed} ${reviewed === 1 ? "review" : "reviews"} finished before the stop and ${reviewed === 1 ? "is" : "are"} saved.`
+        : "No review had finished, so nothing new was saved.";
+      await log(`Stopped at your request. ${saved} No brief was written.`);
+      logClosed = true;
+      await db
+        .update(researchRuns)
+        .set({ usageJson: JSON.stringify(usage) })
+        .where(eq(researchRuns.id, runId));
+      return true;
+    }
     const message = reviewed
       ? `The brief was not written, but ${reviewed} ${reviewed === 1 ? "review was" : "reviews were"} saved. ${errorMessage(error)}`
       : errorMessage(error);
