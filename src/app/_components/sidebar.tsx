@@ -240,7 +240,9 @@ function RunNow({ billingNote }: { billingNote: string | null }) {
   const [requestedAfter, setRequestedAfter] = useState<number | null>(null);
   const [launchTimedOut, setLaunchTimedOut] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [confirmingStop, setConfirmingStop] = useState(false);
   const start = api.runs.start.useMutation();
+  const stop = api.runs.stop.useMutation();
   const status = api.runs.status.useQuery(undefined, {
     refetchInterval: (query) =>
       query.state.data?.status === "running" || requestedAfter !== null
@@ -278,6 +280,10 @@ function RunNow({ billingNote }: { billingNote: string | null }) {
   }, [runKey, router]);
 
   const running = run?.status === "running";
+  // A question left open when one run ends must not greet the next run.
+  useEffect(() => {
+    if (!running) setConfirmingStop(false);
+  }, [running]);
   const starting = requestedAfter !== null && !launchTimedOut;
   const use = claudeUseLine(run?.usageJson);
   const lastMinutes =
@@ -325,8 +331,57 @@ function RunNow({ billingNote }: { billingNote: string | null }) {
           </p>
         )}
         <p className="text-rail-muted text-xs">
-          It keeps going if you close this page.
+          It keeps going if you close this page or the app.
         </p>
+        {running &&
+          (confirmingStop ? (
+            <div className="space-y-2">
+              <p className="text-sm">
+                Stop this run?
+                <span className="text-rail-muted">
+                  {" "}
+                  Reviews that have finished stay saved. Reviews still in
+                  progress are dropped, and no brief is written.
+                </span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  className="btn btn-small border-amber bg-amber text-ink hover:border-amber hover:bg-amber"
+                  disabled={stop.isPending}
+                  onClick={async () => {
+                    try {
+                      await stop.mutateAsync();
+                    } catch {
+                      // Shown below through stop.error.
+                    }
+                    setConfirmingStop(false);
+                    await status.refetch();
+                  }}
+                >
+                  Stop it
+                </button>
+                <button
+                  autoFocus
+                  className={`${railButton} btn-small`}
+                  onClick={() => setConfirmingStop(false)}
+                >
+                  Keep going
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className={`${railButton} btn-small lg:w-full`}
+              onClick={() => setConfirmingStop(true)}
+            >
+              Stop research
+            </button>
+          ))}
+        {stop.error && (
+          <p role="alert" className="text-rail-down text-xs">
+            {stop.error.message}
+          </p>
+        )}
       </div>
     );
   }
@@ -391,6 +446,14 @@ function RunNow({ billingNote }: { billingNote: string | null }) {
                 {run.failedOrSkipped} failed or skipped.
               </span>
             )}
+          </p>
+        )}
+        {run?.status === "stopped" && (
+          <p
+            className="text-rail-muted line-clamp-4 text-xs"
+            title={run.lastLine}
+          >
+            {run.message}
           </p>
         )}
         {run?.status === "failed" && (

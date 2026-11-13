@@ -161,7 +161,7 @@ For cash and money-market balances, use ticker `CASH` and enter the dollar balan
 
 ### 5. Run research and record your thesis
 
-1. Press **Run research** in the sidebar. Watch its status and review any failed/skipped holdings. A first run performs full reviews and can take substantial time, especially with many holdings or high effort settings.
+1. Press **Run research** in the sidebar. Watch its status and review any failed/skipped holdings. A first run performs full reviews and can take substantial time, especially with many holdings or high effort settings. A run is a separate process: it keeps going if you close the page or stop the app. To end one, press **Stop research** in the sidebar. The run notices within a couple of seconds, ends its model calls and starts no more. Reviews that had finished stay saved; a review that was in progress is dropped, and no brief is written.
 2. Open **Today** for the brief. Check its date, quote dates, coverage and warnings before acting.
 3. Open each holding's **Thesis and notes** tab. Write why you own it and measurable conditions that would break that thesis, then save. After an initial run, **Draft a thesis for me** can help; it is a real model call, and you must review the draft before saving it as your thesis.
 4. Run research again when you want saved thesis changes evaluated. Saving a thesis requests a full review; it does not rewrite the previous review automatically.

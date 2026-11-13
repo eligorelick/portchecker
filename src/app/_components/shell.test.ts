@@ -151,7 +151,7 @@ const modules: Record<string, string> = {
         codexModels:{useQuery:() => query({models:[],error:'Could not load the model list.'})},
         save:{useMutation:()=>({...mutation(),mutateAsync:input=>f.settingsSave(input)})}, test:{useMutation:mutation}
       },
-      runs:{status:{useQuery:() => query(f.run)},start:{useMutation:mutation},launchProblem:{useQuery:() => query(null)}}
+      runs:{status:{useQuery:() => query(f.run)},start:{useMutation:mutation},stop:{useMutation:mutation},launchProblem:{useQuery:() => query(null)}}
     };
     export const TRPCReactProvider = ({children}) => children;
   `,
@@ -629,6 +629,51 @@ void test("sidebar counts completed reviews without implying they all succeeded"
   );
   assert.match(html, /Reviewing, 0 of 19 done/);
   fixture.run = null;
+});
+
+void test("a run in progress can be stopped from the sidebar, and a stopped run says what was kept", () => {
+  const sidebar = () =>
+    renderToStaticMarkup(
+      createElement(shell.Sidebar, {
+        holdings: [],
+        openCount: 0,
+        modeLabel: "ChatGPT",
+        billingNote: null,
+      }),
+    );
+  try {
+    fixture.run = {
+      id: 17,
+      status: "running",
+      progress: { done: 2, total: 19 },
+      message: "AAA: analyzing.",
+      lastLine: "10:00:00 AAA: analyzing.",
+    };
+    const running = sidebar();
+    assert.match(running, /<button[^>]*>Stop research<\/button>/);
+    assert.match(running, /keeps going if you close this page or the app/);
+    assert.doesNotMatch(running, /Run research/);
+
+    const kept =
+      "Stopped at your request. 2 reviews finished before the stop and are saved. No brief was written.";
+    fixture.run = {
+      id: 17,
+      status: "stopped",
+      startedAt: "2026-11-05T12:00:00Z",
+      finishedAt: "2026-11-05T12:10:00Z",
+      providerMode: "chatgpt",
+      message: kept,
+      lastLine: `10:10:00 ${kept}`,
+      failedOrSkipped: 0,
+      usageJson: null,
+    };
+    const stopped = sidebar();
+    assert.ok(stopped.includes(kept));
+    assert.match(stopped, /<button[^>]*>Run research<\/button>/);
+    assert.doesNotMatch(stopped, /Stop research|The last run failed/);
+  } finally {
+    fixture.run = null;
+  }
 });
 
 void test("finished run failures remain visible in the sidebar and settings response", async () => {
