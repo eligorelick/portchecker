@@ -30,6 +30,11 @@
 }
 
 @layer base {
+  /* Keeps a field that receives focus clear of the Settings save bar pinned to the bottom. */
+  html {
+    scroll-padding-bottom: 6rem;
+  }
+
   body {
     background: var(--color-paper);
     color: var(--color-ink);
@@ -41,15 +46,15 @@
     outline-offset: 2px;
   }
 
-  summary {
-    cursor: pointer;
-    list-style: none;
-  }
-
   /* The default is the text colour at half strength, about 3:1 on white. Some say what is saved. */
   ::placeholder {
     color: var(--color-muted);
     opacity: 1;
+  }
+
+  summary {
+    cursor: pointer;
+    list-style: none;
   }
 
   summary::-webkit-details-marker {
@@ -208,6 +213,11 @@
     gap: 1.25rem;
     overflow-x: auto;
     box-shadow: inset 0 -1px 0 var(--color-line);
+  }
+
+  /* The strip scrolls sideways, which clips an outline drawn outside the tab. */
+  .tab:focus-visible {
+    outline-offset: -2px;
   }
 
   .tab {
