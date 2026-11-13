@@ -118,7 +118,7 @@ Use **Ask about this holding**, on the Reasoning tab of a holding page, for foll
 
 ## Read the results correctly
 
-Later runs choose a full review when a qualifying filing arrives, a new large price move warrants it, the previous full review is old, or you have changed your thesis. Otherwise they use a light review. A quiet light review can skip the second check; it must not be read as a newly verified conclusion. When a check finds a material problem, the job can revise once and check again. Unresolved concerns stay visible.
+Later runs choose a full review when a qualifying filing arrives, a new large price move warrants it, the previous full review is old, or you have changed your thesis. Otherwise they use a light review. A large move is more than 5% in a day or more than 10% over five trading days, measured on the holding's own price and not against the market, and a full review is due once the last one is more than seven days old. A quiet light review can skip the second check; it must not be read as a newly verified conclusion. When a check finds a material problem, the job can revise once and check again. Unresolved concerns stay visible.
 
 | Label                 | Meaning                                                                                                                                                               |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -175,6 +175,8 @@ Known limits:
 - Some filings or exhibits cannot be read; some funds lack filings, holdings or sector breakdowns.
 - Splits, ADR ratios, currency conversion and cost-basis reconciliation require your own checks.
 - There are no owner-defined target weights, so add/trim suggestions do not implement a personal allocation plan.
+- The app's own figures have a fixed scope. It computes no comparison with peer companies; no correlation, beta or factor exposure across holdings; no overlap between a stock you hold directly and the same stock inside a fund; no tax on a sale and no holding period; no measures specific to real-estate trusts, such as FFO; and no trend in share count, stock-based pay, buybacks, debt maturities or analyst estimates. Valuation is compared with the company's own history, and the S&P 500 fund SPY is the only benchmark. A review covers these topics only as far as the model finds them in filings or web results.
+- Dates follow the computer's time zone. East of roughly UTC+3, a US closing quote can show the next calendar day.
 - CSV tests cover fixtures and screenshot-derived data; a real Schwab export has not yet been validated end to end.
 - The requested Codex file deny list is **not a verified isolation boundary on the tested Windows installation**. Do not assume a model is confined to its research pack or that all local secrets are protected.
 
@@ -192,7 +194,7 @@ See [SECURITY.md](SECURITY.md) for provider data sharing, plain-text credential 
 | `data/last-run.log`       | Output of the most recent sidebar-started research run.                                       |
 | `data/scheduled-run.log`  | Output if you use the scheduling examples above.                                              |
 
-`DATABASE_PATH` changes the database location only. Other data files remain relative to the directory from which the app or script runs. Use the project root consistently. There is no automatic pruning of research packs or imports.
+`DATABASE_PATH` changes the database location only. `pnpm build` opens the database, so it creates an empty file there if none exists; `pnpm db:push` creates the tables. Other data files remain relative to the directory from which the app or script runs. Use the project root consistently. There is no automatic pruning of research packs or imports.
 
 **Back up:** stop the app and all research jobs, then back up the entire `data/` folder, including database `-wal` and `-shm` companions. Include a custom database location if configured, and keep `.env` in a protected backup. Dossiers alone are not a complete backup.
 
