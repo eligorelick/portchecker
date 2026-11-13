@@ -269,6 +269,47 @@ void test("csv: a number in a form no US broker writes is unknown, never a diffe
   assert.equal(european.skipped[0]?.row, "AAA");
 });
 
+void test("csv: a number takes one sign, matched brackets and a dollar sign only in front", () => {
+  const cost = (cell: string) =>
+    parsePositionsCsv(`Symbol,Quantity,Cost Basis\nAAA,1,"${cell}"`).rows[0]
+      ?.costBasis;
+  for (const [cell, expected] of [
+    // Two signs do not say which one is meant.
+    ["--5", null],
+    ["+-5", null],
+    ["-+5", null],
+    ["++5", null],
+    ["(--5)", null],
+    ["-(-5)", null],
+    ["+(5)", null],
+    // A bracket with no partner is a damaged cell, not a negative and not a positive.
+    ["(5", null],
+    ["(1,234.56", null],
+    ["5)", null],
+    // A dollar sign belongs before the digits.
+    ["1$2", null],
+    ["5$", null],
+    ["$($5)", null],
+    // 0,500 is not a thousands group, and could be a decimal comma.
+    ["0,500", null],
+    ["0,125", null],
+    // The forms a US export does use still read, with or without spaces.
+    ["( 5 )", -5],
+    ["$(5)", -5],
+    ["$ 1,234.56", 1234.56],
+    ["-$1,234.56", -1234.56],
+    ["($1,234.56)", -1234.56],
+    ["(-$5)", -5],
+    ["+$5", 5],
+    ["0.50", 0.5],
+    ["0", 0],
+    ["1234.5600", 1234.56],
+    ["100,000", 100000],
+  ] as const) {
+    assert.equal(cost(cell), expected, cell);
+  }
+});
+
 void test("csv: abbreviated and decorated headers still find the right amounts", () => {
   const parsed = parsePositionsCsv(
     '" SYMBOL (Ticker) ",Name,Qty,Last Price,Mkt Val,Cost Basis Total\nAAA,Acme,2,10,20,15',

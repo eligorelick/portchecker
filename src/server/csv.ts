@@ -23,19 +23,40 @@ function clean(cell: string | undefined) {
 function toNumber(cell: string | undefined): number | null {
   // Quantity, value and cost are never percents, so a percent means the row is out of line.
   if (cell?.includes("%")) return null;
-  const c = (cell ?? "").replace(/[$"]/g, "").trim();
-  // Parentheses and a minus both mean negative. Commas may only group thousands, so a decimal
-  // comma or a hex literal is unknown and never a different number.
-  const sign = /^[(+-]*/.exec(c)![0];
-  const digits = c.slice(sign.length).replace(/\)$/, "");
+  // A sign may sit before a bracket, inside it, or after the dollar sign, and the dollar sign only
+  // before the digits or the bracket. Commas may only group thousands, so a decimal comma or a hex
+  // literal is unknown and never a different number.
+  const parts =
+    /^([+-]?)\s*(\$?)\s*(\(?)\s*([+-]?)\s*(\$?)\s*([+-]?)\s*((?:[1-9]\d{0,2}(?:,\d{3})+|\d*)(?:\.\d*)?(?:e[-+]?\d+)?)\s*(\)?)$/i.exec(
+      (cell ?? "").replace(/"/g, "").trim(),
+    );
+  if (!parts) return null;
+  const [
+    ,
+    before,
+    dollar,
+    open,
+    inside,
+    dollarInside,
+    last,
+    digits = "",
+    close,
+  ] = parts;
+  const signs = [before, inside, last].filter(Boolean);
+  // Two signs, two dollar signs, a plus on a bracketed amount or a bracket without its partner do
+  // not say which number is meant.
   if (
-    !/\d/.test(digits) ||
-    !/^(\d{1,3}(,\d{3})+|\d*)(\.\d*)?(e[-+]?\d+)?$/i.test(digits)
+    signs.length > 1 ||
+    (dollar && dollarInside) ||
+    !!open !== !!close ||
+    (open && signs[0] === "+") ||
+    !/\d/.test(digits)
   )
     return null;
   const n = Number(digits.replace(/,/g, ""));
   if (!Number.isFinite(n)) return null;
-  return /[(-]/.test(sign) ? -n : n;
+  // Brackets and a minus both mean negative.
+  return open || signs[0] === "-" ? -n : n;
 }
 
 const usd = (n: number) =>
