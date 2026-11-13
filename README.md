@@ -42,16 +42,16 @@ On a quiet day a holding gets a light review instead of a full one. A light revi
 
 ## How correctness is checked
 
-The numbers below were measured on the commit that added this section. Re-measure them with the commands shown.
+The numbers below were measured on the commit that last changed this section. Re-measure them with the commands shown.
 
-- **1,066 tests in 20 files** run with Node's built-in test runner (`pnpm test`). They need no API key and no provider sign-in: vendor and model answers are supplied by the tests, and the suite passes on a machine with neither.
-- **Coverage is 94.1% of lines, 93.4% of branches and 93.9% of functions** under Node 22 (`node --test --experimental-test-coverage "src/**/*.test.ts"`).
-- **About 27,500 lines of tests for about 17,300 lines of application code**, counted over the tracked files in `src/` and `scripts/`.
-- **The suite passes in three time zones**: the machine's own, `Asia/Tokyo` and `America/Los_Angeles`. The app sets the computer's calendar beside US market dates, so the same tests are run with the clock in each.
+- **1,069 tests in 20 files** run with Node's built-in test runner (`pnpm test`). They need no API key and no provider sign-in: vendor and model answers are supplied by the tests, and the suite passes on a machine with neither. One test, of the ignore rules, is skipped in a copy that is not a git checkout.
+- **Coverage is about 93% of branches and 94% of functions** in Node 22's built-in report (`node --test --experimental-test-coverage "src/**/*.test.ts"`). Treat it as a rough guide: the report counts the test files as well as the application, and its line figure for one unchanged file moved enough between two runs to put the total at 93.2% in one and 94.1% in the other.
+- **About 27,700 lines of tests for about 17,300 lines of application code**, counted over the tracked files in `src/` and `scripts/`.
+- **The suite passes with the clock in `UTC`, `Asia/Tokyo` and `America/Los_Angeles`.** The app sets the computer's calendar beside US market dates, so the same tests are run in each zone.
 - **Continuous integration** runs typecheck, lint with zero warnings allowed, the format check, the tests and a production build on Ubuntu and Windows with Node 22 ([workflow](.github/workflows/ci.yml)).
-- **Fixes carry their proof.** Since the pre-release audit, a fix to behaviour is committed with a test that fails without it or, where a test cannot show it, a before-and-after check on a built server or in a browser. Each commit message says what was wrong and how the fix was shown to work.
+- **Fixes carry their evidence.** Since commit `85e803a`, a fix to behaviour is committed with a test that fails without it or, where a test cannot show it, a before-and-after check on a built server or in a browser. Each such commit message says what was wrong and how the fix was shown to work.
 
-What these checks do not cover is listed under [Known limits](#privacy-cost-and-limitations): no test calls a real provider, and a real Schwab export has not been validated end to end.
+These checks have limits, listed with the others under [Known limits](#privacy-cost-and-limitations): the tests supply the vendor and model answers themselves, so they check the code around the models and not the quality of a model's research, and a real Schwab export has not been validated end to end.
 
 ## Design decisions
 
@@ -232,6 +232,7 @@ Known limits:
 - There are no owner-defined target weights, so add/trim suggestions do not implement a personal allocation plan.
 - The app's own figures have a fixed scope. It computes no comparison with peer companies; no correlation, beta or factor exposure across holdings; no overlap between a stock you hold directly and the same stock inside a fund; no tax on a sale and no holding period; no measures specific to real-estate trusts, such as FFO; and no trend in share count, stock-based pay, buybacks, debt maturities or analyst estimates. Valuation is compared with the company's own history, and the S&P 500 fund SPY is the only benchmark. A review covers these topics only as far as the model finds them in filings or web results.
 - Dates follow the computer's time zone. East of roughly UTC+3, a US closing quote can show the next calendar day.
+- The automated tests supply the vendor and model answers themselves. They check the code around the models, not the quality of a model's research, and no test calls a real provider.
 - CSV tests cover fixtures and screenshot-derived data; a real Schwab export has not yet been validated end to end.
 - The requested Codex file deny list is **not a verified isolation boundary on the tested Windows installation**. Do not assume a model is confined to its research pack or that all local secrets are protected.
 
