@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/eligorelick/portchecker/actions/workflows/ci.yml/badge.svg)](https://github.com/eligorelick/portchecker/actions/workflows/ci.yml)
 
-Portchecker is a local, single-user portfolio research app. It reads your holdings and the thesis you wrote for each one, collects market data and SEC filings, has one AI pass review each holding and a second pass check every claim in that review against the same files, and writes a daily brief. Each holding shows the suggestion, the evidence, what the second check found and what would change the conclusion.
+Portchecker is a local, single-user portfolio research app. It reads your holdings and the thesis you wrote for each one, collects market data and SEC filings, has one AI pass review each stock or fund you hold and a second pass check the claims in that review against the same files, and writes a daily brief. Each holding shows the suggestion, the evidence, what the second check found and what would change the conclusion.
 
 **Decision support only. Portchecker never places trades.** A verified claim means a model matched it to the supplied research material; it does not establish that the source or investment recommendation is correct.
 
@@ -19,8 +19,10 @@ flowchart LR
   H["Holdings and<br/>your thesis"] --> P
   V["Market data<br/>(FMP)"] --> P
   S["SEC filings<br/>(EDGAR)"] --> P
+  W["Web findings<br/>from a separate model call,<br/>full reviews only"] --> P
   P["Research pack<br/>one dated folder<br/>per holding"] --> A["Analyst pass"]
-  A --> C["Verifier pass<br/>checks each claim<br/>against the pack"]
+  A --> C["Verifier pass<br/>checks the claims<br/>against the pack"]
+  A -. "light review<br/>with nothing new" .-> U
   C -- "problem found" --> R["One revision"]
   R --> C
   C --> U["Saved review"]
@@ -28,13 +30,13 @@ flowchart LR
   F["Totals, weights and gains<br/>computed in code"] --> B
 ```
 
-1. **Research pack.** For each holding the app writes a dated folder under `data/packs/` holding the vendor's figures, your position as computed in code, the sections it could read from new filings and, on a full review, web findings with links.
-2. **Analyst.** A model is given that folder, told to use only what is in it, and returns a structured review: an action, the evidence with a source for each claim, its reasoning and what would change its mind.
-3. **Verifier.** A second pass gets the same folder plus the review. It marks each claim verified, unverified or contradicted, says whether the conclusion is supported, and gives its own action. With two providers set up, the other provider does this pass.
-4. **One revision.** If the check finds a material problem, the analyst revises once and is checked again. A conclusion the final check does not support stays labelled as rejected, and the earlier Current view in your notes is kept.
-5. **Brief.** Portfolio totals, weights, gains and the share of claims verified are computed in code. A model writes the brief around them, and any figure in its summary, reasons or observations that cannot be traced to its inputs is flagged on Today.
+1. **Research pack.** For each holding the app writes a dated folder under `data/packs/`. For a light review it holds a copy of your notes and one file with the vendor's figures and your position as computed in code. A full review adds the text it could read from the latest annual and quarterly reports and recent current reports (8-Ks), and web findings with links, gathered by a separate model call.
+2. **Analyst.** A model is given that folder, told to take its numbers only from those files, and returns a structured review: an action, the evidence with a source for each claim, its reasoning and what would change its mind.
+3. **Verifier.** A second pass gets the same folder plus the review. It marks each claim verified, unverified or contradicted, says whether the conclusion is supported, and gives its own action. In Both mode the other provider does this pass. If that provider's call fails and fallback is on, the check can go back to the provider that wrote the review, and the review then says one provider checked its own work.
+4. **One revision.** If the check finds a material problem, the analyst revises once and is checked again. A conclusion the final check does not support stays labelled as rejected. The earlier Current view in your notes is then kept and marked as not updated, and the same happens when a claim is still contradicted after the revision.
+5. **Brief.** Portfolio totals, weights, gains and the share of claims verified are computed in code. A model writes the brief around them. Dollar amounts, percentages, decimals and figures given in thousands, millions or billions in its summary, reasons and observations are compared with its inputs; whole numbers without a unit are not. When one cannot be traced, Today shows a general warning and the saved brief file names the figures.
 
-On a quiet day a holding gets a light review instead of a full one. A light review can skip the second check, and is then labelled "Not checked" rather than verified ([how to read the labels](#read-the-results-correctly)).
+On a quiet day a holding gets a light review instead of a full one. A light review that reports nothing new skips the second check. The holding page then keeps showing the last review that did say something, with its marks, and adds "Nothing new as of" with the time of the light one. A claim that had no second check is labelled "Not checked" ([how to read the labels](#read-the-results-correctly)).
 
 ![A holding page of the demo: the suggestion, the second check's different answer, the proof strip and the chain from thesis to evidence](docs/demo-holding.png)
 
