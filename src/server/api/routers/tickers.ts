@@ -82,7 +82,7 @@ function addToSection(markdown: string, title: string, text: string) {
 }
 
 export const tickersRouter = createTRPCRouter({
-  // One model call over the latest pack folder. The answer is shown, not stored.
+  // One model call over the files buildResearchContext gathers. The answer is shown, not stored.
   ask: publicProcedure
     .input(
       z.object({

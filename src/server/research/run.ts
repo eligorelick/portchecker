@@ -101,7 +101,7 @@ const WEB_FINDING_MAX_AGE_DAYS = 45;
 const REVIEW_CONCURRENCY = 3;
 const RECENT_RESULTS_DAYS = 3;
 
-/** The run in progress, if any. Keeps a scheduled run and "Run now" from overlapping. */
+/** The run in progress, if any. Keeps a scheduled run and "Run research" from overlapping. */
 export async function activeRun() {
   const cutoff = new Date(Date.now() - STALE_RUN_MS).toISOString();
   const [run] = await db

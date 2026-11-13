@@ -1,4 +1,4 @@
-// `pnpm research` runs the daily job once. Cron, launchd, Task Scheduler and "Run now" call this.
+// `pnpm research` runs the daily job once. Cron, launchd, Task Scheduler and "Run research" call this.
 import { runResearch } from "../src/server/research/run.ts";
 import { normalizeTicker } from "../src/server/csv.ts";
 

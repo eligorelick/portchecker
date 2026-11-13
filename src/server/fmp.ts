@@ -387,11 +387,11 @@ export function priceSummary(history: Row[], dividends?: Row[]) {
       totalReturn === null ? null : Number(totalReturn.toFixed(2)),
     total_return_method:
       "Price change plus cash dividends by ex-date, without reinvestment; null when dividend coverage is unconfirmed or the price history is under a year.",
-    // Commentary quotes yields at other prices, so this is the one at today's.
     start_date: start.date,
     start_price: start.price,
     distributions_1y: paid,
     distributions_1y_count: paid === null ? null : cash.length,
+    // Commentary quotes yields at other prices, so this is the one at today's.
     distribution_yield_1y_pct:
       paid === null || latest.price <= 0
         ? null

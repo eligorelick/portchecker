@@ -263,7 +263,7 @@ export function MissingPrices({ tickers }: { tickers: string[] }) {
   );
 }
 
-/** The whole portfolio on one line. Every figure here is computed in code. */
+/** Names the holdings whose prices are older than the rest, or older than a few days. */
 export function QuoteWarning({ facts }: { facts: PortfolioFacts }) {
   const dates = facts.quote_dates;
   const tickers = [
@@ -296,6 +296,7 @@ export function QuoteWarning({ facts }: { facts: PortfolioFacts }) {
   );
 }
 
+/** The whole portfolio on one line. Every figure here is computed in code. */
 export function PortfolioSummary({ facts }: { facts: PortfolioFacts }) {
   const gain = gainLabel(
     facts.positions_with_cost_basis,
