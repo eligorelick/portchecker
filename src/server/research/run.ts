@@ -172,8 +172,10 @@ type TickerOutcome = {
 };
 
 /**
- * Everything the models were given for a review, to look a cited link up in. A filing's address is
- * in its filing files, not in pack.json. review.json is the analyst's own answer, so it is left out.
+ * The vendor data, filings and web findings given to a review, to look a cited link up in. A
+ * filing's address is in its filing files, not in pack.json. Two files are left out because a model
+ * wrote them: review.json is the analyst's own answer, and dossier.md carries the Current view an
+ * earlier review wrote, so neither may vouch for a link.
  */
 export function researchFilesText(dir: string) {
   return readdirSync(dir, { withFileTypes: true })
@@ -181,7 +183,8 @@ export function researchFilesText(dir: string) {
       (file) =>
         file.isFile() &&
         /\.(json|md|txt)$/.test(file.name) &&
-        file.name !== "review.json",
+        file.name !== "review.json" &&
+        file.name !== "dossier.md",
     )
     .map((file) => readFileSync(path.join(dir, file.name), "utf8"))
     .join("\n");

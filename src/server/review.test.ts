@@ -2406,16 +2406,24 @@ void test("a filing's own address is known from the filing files, not from pack.
     );
     assert.deepEqual(
       marked.map((item) => item.link_not_in_files ?? false),
-      [false, false, false, true],
+      [false, false, false, true, true],
     );
   } finally {
     rmSync(temp, { recursive: true, force: true });
+    // Nor is the copy of my notes. Its Current view is what an earlier analyst wrote, so a link
+    // found only there would be yesterday's review vouching for today's.
+    const fromNotes = "https://files.example/from-the-current-view";
+    writeFileSync(
+      path.join(temp, "dossier.md"),
+      `# S\n\n## Current view\n\nSee ${fromNotes}\n`,
+    );
   }
 });
 
 void test("saved evidence marks only news links absent from the research files", () => {
   assert.equal(typeof updateFunctions.markUnknownLinks, "function");
   const known = "https://example.com/article?x=1&y=2";
+        `news:${fromNotes}`,
   const absent = "https://example.com/mistyped";
   const items = [
     { ...evidence("Known news"), source: `news:${known}` },
