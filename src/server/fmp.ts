@@ -193,7 +193,9 @@ export async function cacheMissingHoldingQuotes(tickers: string[]) {
       try {
         await fmpGet(ticker, "quote");
       } catch {
-        // The existing missing-price notice is the fallback when the vendor is unavailable.
+        // The existing missing-price notice is the fallback when the vendor is unavailable. Each
+        // further ticker would wait out the same failure while the save that called this hangs.
+        return;
       }
     }
   } catch {

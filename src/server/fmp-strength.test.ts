@@ -632,6 +632,26 @@ void test("fmp: unusable quotes and malformed profiles recover on the same day",
   }
 });
 
+void test("fmp: the quote warm-up after a save stops at the first vendor failure", async () => {
+  // Saving waits for this, and each failing ticker costs a retry wait and up to two timeouts.
+  for (const status of [503, 429]) {
+    const down = stubFmp(() => new Response(null, { status }));
+    await cacheMissingHoldingQuotes(["AAA", "BBB", "CCC", "DDD", "EEE"]);
+    assert.equal(down.length, 2, `one attempt and its retry on a ${status}`);
+  }
+  // A symbol the vendor does not know is an answer, not a failure, so the rest are still asked.
+  const unknown = stubFmp((_, call) =>
+    Response.json(call === 1 ? [] : [{ price: 100 }]),
+  );
+  await cacheMissingHoldingQuotes(["NOPE", "BBB", "CCC"]);
+  assert.equal(unknown.length, 3);
+  const cached = await latestCachedQuotes();
+  assert.deepEqual(
+    ["NOPE", "BBB", "CCC"].map((ticker) => cached.has(ticker)),
+    [false, true, true],
+  );
+});
+
 void test("fmp: invalid stored quotes cannot hide an older usable quote or prevent refresh", async () => {
   for (const price of [null, 0, -1, "100"]) {
     await client.execute("DELETE FROM fmp_cache");
