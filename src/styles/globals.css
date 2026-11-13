@@ -46,6 +46,12 @@
     list-style: none;
   }
 
+  /* The default is the text colour at half strength, about 3:1 on white. Some say what is saved. */
+  ::placeholder {
+    color: var(--color-muted);
+    opacity: 1;
+  }
+
   summary::-webkit-details-marker {
     display: none;
   }
