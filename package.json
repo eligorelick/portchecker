@@ -1,7 +1,7 @@
 {
   "name": "portchecker",
   "version": "0.1.0",
-  "description": "Local, single-user portfolio research app: holdings, market data and SEC filings go to an AI analyst pass, a second pass checks every claim, and the result is a daily brief.",
+  "description": "Local, single-user portfolio research app: holdings, market data and SEC filings go to an AI analyst pass, a second pass checks its claims, and the result is a daily brief.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -15,8 +15,7 @@
     "llm",
     "nextjs",
     "trpc",
-    "sqlite",
-    "local-first"
+    "sqlite"
   ],
   "private": true,
   "type": "module",
