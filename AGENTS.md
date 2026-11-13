@@ -4,4 +4,4 @@ Read CONTRIBUTING.md and SECURITY.md before making changes. Keep the app local a
 
 Use fictional fixtures, a throwaway database and a temporary working directory for tests. Stub vendor and model calls. Verify changes in a separate source copy when an installation is running.
 
-Before finishing, run pnpm typecheck, pnpm lint, pnpm test and pnpm build in the verification copy, and report any checks not performed. Do not publish without the owner's license choice and publication authorization.
+Before finishing, run pnpm typecheck, pnpm lint, pnpm format:check, pnpm test and pnpm build (in the separate copy when one is used), and report any checks not performed. Do not push, tag or publish without the owner's authorization. Keep the MIT LICENSE file and its notices.
