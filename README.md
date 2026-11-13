@@ -1,10 +1,63 @@
 # Portchecker
 
-Portchecker is a local portfolio research app. It combines your holdings and investment theses with market data, SEC filings and AI research to produce a daily brief. Each holding shows the recommendation, supporting evidence, a second check and the conditions that would change the conclusion.
+[![CI](https://github.com/eligorelick/portchecker/actions/workflows/ci.yml/badge.svg)](https://github.com/eligorelick/portchecker/actions/workflows/ci.yml)
+
+Portchecker is a local, single-user portfolio research app. It reads your holdings and the thesis you wrote for each one, collects market data and SEC filings, has one AI pass review each holding and a second pass check every claim in that review against the same files, and writes a daily brief. Each holding shows the suggestion, the evidence, what the second check found and what would change the conclusion.
 
 **Decision support only. Portchecker never places trades.** A verified claim means a model matched it to the supplied research material; it does not establish that the source or investment recommendation is correct.
 
+![The Today page of the demo: a daily brief, the portfolio totals and one holding to look at](docs/demo-today.png)
+
+The screenshots show the built-in demo: four made-up investments, cash and a finished brief, loaded with `pnpm demo:seed`. It needs no account and no API key ([try it](#try-the-demo-without-credentials)).
+
 Licensed under [MIT](LICENSE). For development and release guidance, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## How it works
+
+```mermaid
+flowchart LR
+  H["Holdings and<br/>your thesis"] --> P
+  V["Market data<br/>(FMP)"] --> P
+  S["SEC filings<br/>(EDGAR)"] --> P
+  P["Research pack<br/>one dated folder<br/>per holding"] --> A["Analyst pass"]
+  A --> C["Verifier pass<br/>checks each claim<br/>against the pack"]
+  C -- "problem found" --> R["One revision"]
+  R --> C
+  C --> U["Saved review"]
+  U --> B["Daily brief"]
+  F["Totals, weights and gains<br/>computed in code"] --> B
+```
+
+1. **Research pack.** For each holding the app writes a dated folder under `data/packs/` holding the vendor's figures, your position as computed in code, the sections it could read from new filings and, on a full review, web findings with links.
+2. **Analyst.** A model is given that folder, told to use only what is in it, and returns a structured review: an action, the evidence with a source for each claim, its reasoning and what would change its mind.
+3. **Verifier.** A second pass gets the same folder plus the review. It marks each claim verified, unverified or contradicted, says whether the conclusion is supported, and gives its own action. With two providers set up, the other provider does this pass.
+4. **One revision.** If the check finds a material problem, the analyst revises once and is checked again. A conclusion the final check does not support stays labelled as rejected, and the earlier Current view in your notes is kept.
+5. **Brief.** Portfolio totals, weights, gains and the share of claims verified are computed in code. A model writes the brief around them, and any figure in its summary, reasons or observations that cannot be traced to its inputs is flagged on Today.
+
+On a quiet day a holding gets a light review instead of a full one. A light review can skip the second check, and is then labelled "Not checked" rather than verified ([how to read the labels](#read-the-results-correctly)).
+
+![A holding page of the demo: the suggestion, the second check's different answer, the proof strip and the chain from thesis to evidence](docs/demo-holding.png)
+
+## How correctness is checked
+
+The numbers below were measured on the commit that added this section. Re-measure them with the commands shown.
+
+- **1,066 tests in 20 files** run with Node's built-in test runner (`pnpm test`). They need no API key and no provider sign-in: vendor and model answers are supplied by the tests, and the suite passes on a machine with neither.
+- **Coverage is 94.1% of lines, 93.4% of branches and 93.9% of functions** under Node 22 (`node --test --experimental-test-coverage "src/**/*.test.ts"`).
+- **About 27,500 lines of tests for about 17,300 lines of application code**, counted over the tracked files in `src/` and `scripts/`.
+- **The suite passes in three time zones**: the machine's own, `Asia/Tokyo` and `America/Los_Angeles`. The app sets the computer's calendar beside US market dates, so the same tests are run with the clock in each.
+- **Continuous integration** runs typecheck, lint with zero warnings allowed, the format check, the tests and a production build on Ubuntu and Windows with Node 22 ([workflow](.github/workflows/ci.yml)).
+- **Fixes carry their proof.** Since the pre-release audit, a fix to behaviour is committed with a test that fails without it or, where a test cannot show it, a before-and-after check on a built server or in a browser. Each commit message says what was wrong and how the fix was shown to work.
+
+What these checks do not cover is listed under [Known limits](#privacy-cost-and-limitations): no test calls a real provider, and a real Schwab export has not been validated end to end.
+
+## Design decisions
+
+- **Figures come from code, not from the model.** Position values, weights, gains, concentration and the verified score are computed from holdings and quotes; the model is handed them and told to trust them. The cost is that a wrong vendor figure flows straight through, so the app cross-checks some vendor rows against each other and says so in the pack when they do not add up.
+- **A second pass checks the first and may disagree.** Its verdicts and its own action are shown beside the analyst's, and a rejected conclusion is not allowed to replace your saved Current view. The cost is a second model call for every full review, and two more when it revises. The checker also reads the analyst's review first, so it is a check of that review, not a blind second opinion.
+- **Unknown stays unknown.** A holding with no price is named and left out of the totals instead of being valued at zero, a missing cost basis gives no gain, and an imported number in a form the reader does not recognise is left blank. The cost is totals that can be partial; the pages say which holdings were left out.
+- **Full reviews only when something changed.** A new annual, quarterly or current report, a move above 5% in a day or 10% in five sessions, a changed thesis or seven days since the last one triggers a full review; otherwise the review is light. That keeps model usage down, and it means a slow change with no filing and no large move waits up to a week.
+- **Local files and no login.** Holdings, research and briefs live in one SQLite file and plain files under `data/`, so a backup is a copy of that folder and `.env`. The cost is a single user on a trusted machine: the request checks in [SECURITY.md](SECURITY.md) are not authentication, and the AI calls still send your notes and holdings to the provider you choose.
 
 ## What you can do
 
@@ -23,7 +76,7 @@ The app stores data locally in SQLite and Markdown files. AI processing uses ext
 - A separate, writable project directory. On Windows, keep it outside `AppData\Local\Temp`; the tested Codex sandbox could not start processes there.
 - For real research: Financial Modeling Prep access, a name/email for the SEC request identity, and at least one AI provider below. The app has been tested with FMP Starter; endpoint availability depends on your plan.
 
-Current verification covers Windows. Linux/macOS scheduling examples are provided below, but those platforms have not received the same end-to-end checks.
+The automated checks run on Linux and Windows. Research runs with real providers have been made only on Windows, macOS is untested, and the Linux/macOS scheduling examples below have not been run.
 
 Download or clone the source, open a terminal in the project root, then install:
 
