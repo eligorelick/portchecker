@@ -257,7 +257,8 @@ export function ReasoningChain({
             Verified checks cited: filings {sources.filing}, vendor data{" "}
             {sources.vendor}, web summaries {sources.web}
             {sources.other > 0 && `, other ${sources.other}`}. A check can cite
-            more than one.
+            more than one. Verified means the second check found the claim in
+            the research files, not that the files or the suggestion are right.
           </p>
         )}
         {sources && sources.web > sources.filing + sources.vendor && (
@@ -275,7 +276,10 @@ export function ReasoningChain({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <ActionBadge action={result.action} />
           <StatusBadge status={result.status} />
-          <span className="text-muted text-xs">
+          <span
+            className="text-muted text-xs"
+            title="The analyst model's own rating of how clearly this action beats the alternatives. The second check does not test it, and it is not the chance the call is right."
+          >
             Analyst confidence {Math.round(result.confidence * 100)}%
           </span>
         </div>

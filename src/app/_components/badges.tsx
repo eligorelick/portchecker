@@ -173,6 +173,16 @@ const OPINION_LABEL: Record<SecondOpinion, string> = {
   second_pass_disagrees: "Second check disagrees",
 };
 
+// The second check reads the analyst's review first, so this is not a blind second opinion.
+const OPINION_MEANING: Record<SecondOpinion, string> = {
+  agree:
+    "After reading the analyst's review, the other provider's check would take the same action. Agreement does not show the facts are right.",
+  disagree:
+    "After reading the analyst's review, the other provider's check would take a different action.",
+  second_pass_disagrees:
+    "After reading the analyst's review, the same provider's second pass would take a different action.",
+};
+
 export function AgreeBadge({
   opinion,
   rejected = false,
@@ -195,6 +205,7 @@ export function AgreeBadge({
   return (
     <span
       className={`text-xs whitespace-nowrap ${agree ? "text-ok" : "text-bad font-semibold"}`}
+      title={OPINION_MEANING[opinion]}
     >
       {agree ? "✓" : "≠"} {OPINION_LABEL[opinion]}
     </span>
