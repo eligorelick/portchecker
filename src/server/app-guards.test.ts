@@ -75,8 +75,8 @@ const { createTRPCContext, createTRPCRouter, publicProcedure, tickerInput } =
   await import("./api/trpc.ts");
 const { client } = await import("./db/index.ts");
 const { today } = await import("./fmp.ts");
-const { middleware, config: middlewareConfig } =
-  await import("../middleware.ts");
+const guard = await import("../middleware.ts");
+const { middleware } = guard;
 const { NextRequest } = await import("next/server.js");
 
 const TABLES = [
@@ -295,7 +295,7 @@ void test("every response says how to treat it, and none names the framework", a
     };
   };
   assert.equal(nextConfig.poweredByHeader, false);
-  // The middleware skips static files, so these are set where every path gets them.
+  // These two are the same for every response, so the config sets them, not the middleware.
   assert.deepEqual(await nextConfig.headers?.(), [
     {
       source: "/:path*",
@@ -330,30 +330,22 @@ void test("a page on another site cannot make the API run with a GET", async () 
   assert.equal(get("/holdings", "cross-site").status, 200);
 });
 
-void test("only the built static files skip the request checks", () => {
-  // Next runs the middleware for a path the whole matcher matches. A path that merely starts like
-  // the static folder is answered with the not-found page, which shows the holdings in the sidebar,
-  // so it must be checked like any page.
-  const checked = (pathname: string) =>
-    new RegExp(`^${middlewareConfig.matcher}$`).test(pathname);
-  for (const pathname of [
-    "/",
-    "/holdings",
-    "/api/trpc/settings.get",
-    "/_next/staticfoo",
-    "/_next/static",
-    "/_next/image",
-    "/_next/image/x",
-    "/_next/imagefoo",
-    "/_next/data/x.json",
-  ])
-    assert.equal(checked(pathname), true, pathname);
-  for (const pathname of [
-    "/_next/static/chunks/main.js",
-    "/_next/static/css/app.css",
-    "/_next/static/media/font.woff2",
-  ])
-    assert.equal(checked(pathname), false, pathname);
+void test("no path skips the request checks", () => {
+  // A matcher that exempts a folder leans on how Next answers every path inside it. An earlier one
+  // exempted "_next/static" by prefix, and "/_next/staticfoo" came back as the not-found page with
+  // the holdings in its sidebar. With no matcher the middleware runs for every request.
+  assert.equal("config" in guard, false);
+  const builtFile = (host: string) =>
+    middleware(
+      new NextRequest(`http://${host}/_next/static/chunks/main.js`, {
+        headers: { host },
+      }),
+    );
+  assert.equal(builtFile("evil.example").status, 403);
+  assert.equal(
+    builtFile("127.0.0.1:3000").headers.get("x-middleware-next"),
+    "1",
+  );
 });
 
 void test("the host and origin checks still refuse before anything else", async () => {

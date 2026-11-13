@@ -54,8 +54,6 @@ export function middleware(req: NextRequest) {
   return res;
 }
 
-// Only the built files are skipped. The slash matters: without it "/_next/staticfoo" was skipped
-// too, and Next answers that with the not-found page, sidebar and holdings included.
-export const config = {
-  matcher: "/((?!_next/static/).*)",
-};
+// No matcher: every request is checked, built files included. An exemption would lean on how Next
+// answers each path inside the exempt folder, and one for "_next/static" once let "/_next/staticfoo"
+// through to the not-found page, sidebar and holdings included.
