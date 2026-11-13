@@ -1,7 +1,6 @@
 import { rmSync } from "node:fs";
 
 import { TRPCError } from "@trpc/server";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -9,7 +8,7 @@ import {
   publicProcedure,
   tickerInput as ticker,
 } from "~/server/api/trpc";
-import { decisions, tickers } from "~/server/db/schema";
+import { decisions } from "~/server/db/schema";
 import {
   replaceableSection,
   readDossier,
@@ -30,7 +29,6 @@ import {
   thesisDraftPrompt,
   thesisDraftSchema,
 } from "~/server/research/prompts";
-import { tickerHistory } from "~/server/updates";
 
 async function inResearchFiles<T>(
   symbol: string,
@@ -84,20 +82,6 @@ function addToSection(markdown: string, title: string, text: string) {
 }
 
 export const tickersRouter = createTRPCRouter({
-  detail: publicProcedure
-    .input(z.object({ ticker }))
-    .query(async ({ ctx, input }) => {
-      const [row] = await ctx.db
-        .select()
-        .from(tickers)
-        .where(eq(tickers.ticker, input.ticker));
-      return row ?? null;
-    }),
-
-  history: publicProcedure
-    .input(z.object({ ticker }))
-    .query(({ input }) => tickerHistory(input.ticker)),
-
   // One model call over the latest pack folder. The answer is shown, not stored.
   ask: publicProcedure
     .input(

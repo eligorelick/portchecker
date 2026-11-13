@@ -1,4 +1,3 @@
-import { briefsRouter } from "~/server/api/routers/briefs";
 import { dossiersRouter } from "~/server/api/routers/dossiers";
 import { holdingsRouter } from "~/server/api/routers/holdings";
 import { runsRouter } from "~/server/api/routers/runs";
@@ -7,7 +6,6 @@ import { tickersRouter } from "~/server/api/routers/tickers";
 import { createTRPCRouter } from "~/server/api/trpc";
 
 export const appRouter = createTRPCRouter({
-  briefs: briefsRouter,
   dossiers: dossiersRouter,
   holdings: holdingsRouter,
   runs: runsRouter,

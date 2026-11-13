@@ -8,11 +8,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 
-import { desc } from "drizzle-orm";
-import { z } from "zod";
-
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { researchRuns } from "~/server/db/schema";
 import { runProgress } from "~/server/queue";
 import { activeRun, latestRun } from "~/server/research/run";
 import { env } from "~/env";
@@ -96,14 +92,4 @@ export const runsRouter = createTRPCRouter({
       progress: run.status === "running" ? runProgress(logText) : null,
     };
   }),
-
-  list: publicProcedure
-    .input(z.object({ limit: z.number().int().max(100).default(20) }))
-    .query(({ ctx, input }) =>
-      ctx.db
-        .select()
-        .from(researchRuns)
-        .orderBy(desc(researchRuns.id))
-        .limit(input.limit),
-    ),
 });
