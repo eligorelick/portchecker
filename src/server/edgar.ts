@@ -197,6 +197,9 @@ export async function syncFilings(
       const filedAt = list.filingDate[i] ?? "";
       const ageDays = ageOf(filedAt);
       if (!TRACKED_FORMS.has(form) || known.has(accessionNo)) continue;
+      // Both become part of file names in a pack, so neither may carry a path.
+      if (!/^[\w-]+$/.test(accessionNo) || !/^\d{4}-\d{2}-\d{2}$/.test(filedAt))
+        continue;
       if (ageDays > HISTORY_DAYS) continue;
       known.add(accessionNo);
       if (ANNUAL_FORMS.has(form)) annualReports += 1;

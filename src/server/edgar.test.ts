@@ -1314,6 +1314,34 @@ void test("a late filing notice is tracked and forces a full review", async () =
   );
 });
 
+void test("a filing whose number or date could not be part of a file name is not tracked", async () => {
+  stubSec({
+    [SUBMISSIONS]: JSON.stringify(
+      submissions([
+        // Both fields are later joined into file names under data/packs.
+        ["x/../../../../../outside", "8-K", daysAgoIso(1)],
+        ["..", "8-K", daysAgoIso(1)],
+        ["0000000001-26-000002", "8-K", `../../${daysAgoIso(1)}`],
+        ["0000000001-26-000003", "8-K", "not a date"],
+        ["0000000001-26-000004", "8-K", daysAgoIso(1)],
+      ]),
+    ),
+  });
+  const pending = await syncFilings("TEST", "1");
+  assert.deepEqual(
+    pending.map((f) => f.accessionNo),
+    ["0000000001-26-000004"],
+  );
+  const rows = await db
+    .select()
+    .from(filings)
+    .where(eq(filings.ticker, "TEST"));
+  assert.deepEqual(
+    rows.map((r) => r.accessionNo),
+    ["0000000001-26-000004"],
+  );
+});
+
 void test("an annual report in an exhibit is found and excerpted", async () => {
   assert.equal(
     incorporatesAnnualReport("20-F", {
