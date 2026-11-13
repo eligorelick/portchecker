@@ -323,7 +323,11 @@ export function openCalls(
       !decisionRows.some(
         (d) =>
           d.ticker === update.ticker &&
-          (d.createdAt ?? `${d.date}T23:59:59.999Z`) >= update.createdAt,
+          // An older decision has only its day, which is a day on this computer's calendar. So is
+          // the review's day; taking the end of that day in UTC missed evening reviews.
+          (d.createdAt
+            ? d.createdAt >= update.createdAt
+            : d.date >= new Date(update.createdAt).toLocaleDateString("en-CA")),
       ),
   );
 }

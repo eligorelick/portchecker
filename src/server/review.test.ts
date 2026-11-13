@@ -630,6 +630,38 @@ void test("an open call stays visible until it is decided or replaced", () => {
   assert.deepEqual(open.map((u) => u.ticker).sort(), ["BEFORE", "OLD"]);
 });
 
+void test("a decision saved with only a day is compared with the review's day here, not in UTC", () => {
+  // Decisions logged before their time was recorded have a local day and nothing else.
+  const local = (day: number, hour: number) =>
+    new Date(2026, 10, day, hour, 30).toISOString();
+  const update = (ticker: string, createdAt: string) =>
+    [
+      ticker,
+      { ticker, runId: 15, createdAt, result: { action: "trim" } },
+    ] as const;
+  const updates = new Map([
+    update("SAMEDAY", local(5, 21)),
+    update("NEXTDAY", local(6, 6)),
+  ]) as unknown as Map<string, UpdateView>;
+  const open = openCalls(
+    [],
+    updates,
+    ["SAMEDAY", "NEXTDAY"].map((ticker) => ({
+      ticker,
+      date: "2026-11-05",
+      createdAt: null,
+    })),
+    new Set(["SAMEDAY", "NEXTDAY"]),
+  );
+  // West of UTC a 9:30 PM review is already the 6th in UTC, and the same day's decision was
+  // missed. East of UTC a 6:30 AM review on the 6th is still the 5th in UTC, and the day-old
+  // decision hid it.
+  assert.deepEqual(
+    open.map((u) => u.ticker),
+    ["NEXTDAY"],
+  );
+});
+
 void test("a decided brief entry does not hide a newer call on the same holding", () => {
   const update = (ticker: string, action: string, createdAt: string) =>
     [ticker, { ticker, runId: 16, createdAt, result: { action } }] as const;
