@@ -304,6 +304,15 @@ export const screenshotPickProblem = (count: number) =>
     : null;
 
 /**
+ * The extension a saved screenshot gets, or null when the upload is not one of the image types the
+ * picker offers. A pasted image has no extension and is saved as PNG.
+ */
+export function screenshotExtension(name: string) {
+  const ext = (/\.[^./\\]*$/.exec(name)?.[0] ?? ".png").toLowerCase();
+  return [".png", ".jpg", ".jpeg", ".webp"].includes(ext) ? ext : null;
+}
+
+/**
  * A number typed into a holding's form, or null. Number() alone would take 0x10 as 16. Exponents
  * stay, because the form fills itself from the stored value and String(1e21) has one.
  */

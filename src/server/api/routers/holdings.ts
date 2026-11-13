@@ -22,7 +22,7 @@ import {
   screenshotPositionsToCsv,
 } from "~/server/csv";
 import { IMPORTS_DIR, runModel } from "~/server/model";
-import { MAX_SCREENSHOTS } from "~/server/queue";
+import { MAX_SCREENSHOTS, screenshotExtension } from "~/server/queue";
 import { SCREENSHOT_PROMPT, screenshotSchema } from "~/server/research/prompts";
 import { holdings } from "~/server/db/schema";
 import { cacheMissingHoldingQuotes } from "~/server/fmp";
@@ -64,7 +64,18 @@ export const holdingsRouter = createTRPCRouter({
     .input(
       z.object({
         images: z
-          .array(z.object({ name: z.string(), dataUrl: z.string() }))
+          .array(
+            z.object({
+              // The browser's picker is the only other check, and a request need not come from it.
+              name: z
+                .string()
+                .refine(
+                  (name) => screenshotExtension(name) !== null,
+                  "Screenshots must be PNG, JPEG or WebP images.",
+                ),
+              dataUrl: z.string(),
+            }),
+          )
           .min(1, "Choose at least one screenshot.")
           .max(
             MAX_SCREENSHOTS,
@@ -77,7 +88,7 @@ export const holdingsRouter = createTRPCRouter({
       const dir = path.join(IMPORTS_DIR, `screenshots-${stamp}`);
       mkdirSync(dir, { recursive: true });
       const files = input.images.map((image, i) => {
-        const ext = path.extname(image.name).toLowerCase() || ".png";
+        const ext = screenshotExtension(image.name) ?? ".png";
         const data = image.dataUrl.slice(image.dataUrl.indexOf(",") + 1);
         const file = path.join(dir, `${i + 1}${ext}`);
         writeFileSync(file, Buffer.from(data, "base64"));

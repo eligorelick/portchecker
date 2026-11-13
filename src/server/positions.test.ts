@@ -34,6 +34,7 @@ import {
   previewSummary,
   rowCount,
   rowTextAfterChange,
+  screenshotExtension,
   screenshotPickProblem,
 } from "./queue.ts";
 import { dossierTemplate } from "./research/prompts.ts";
@@ -2039,6 +2040,38 @@ void test("a screenshot pick over the limit gets one plain sentence, and the rou
       holdingRoutes.parseScreenshots({ images }),
       (e: Error & { code?: string }) => e.code === "BAD_REQUEST",
     );
+    // Refused before it wrote the images or reached a model.
+    assert.equal(existsSync(path.join("data", "imports")), false);
+  });
+});
+
+void test("a screenshot upload that is not an image file is refused before anything is written", async () => {
+  // The helper is checked first: without it this test stops here and never reaches the route.
+  for (const [name, ext] of [
+    ["screen.png", ".png"],
+    ["Screen Shot.JPG", ".jpg"],
+    ["a.b.jpeg", ".jpeg"],
+    ["x.webp", ".webp"],
+    ["pasted image", ".png"],
+    ["folder.d/pasted", ".png"],
+    ["positions.exe", null],
+    ["page.html", null],
+    ["shot.png:stream", null],
+    ["shot.png.js", null],
+    ["shot.", null],
+  ] as const) {
+    assert.equal(screenshotExtension(name), ext, name);
+  }
+  await inThrowawayFolder(async () => {
+    for (const name of ["positions.exe", "page.html", "shot.png:stream"]) {
+      await assert.rejects(
+        holdingRoutes.parseScreenshots({
+          images: [{ name, dataUrl: "data:image/png;base64,AAAA" }],
+        }),
+        (e: Error & { code?: string }) => e.code === "BAD_REQUEST",
+        name,
+      );
+    }
     // Refused before it wrote the images or reached a model.
     assert.equal(existsSync(path.join("data", "imports")), false);
   });
