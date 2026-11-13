@@ -1335,7 +1335,13 @@ void test("audit: concurrent processes atomically claim one run", async () => {
     assert.equal(pack.status, 1);
     assert.match(pack.stderr, /research run is active/);
   } finally {
-    rmSync(temp, { recursive: true, force: true });
+    // Seven child processes have just closed this database. Windows can still hold the folder.
+    rmSync(temp, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 100,
+    });
   }
 });
 
