@@ -109,6 +109,12 @@ const CLAUDE_MAX_CONTINUATIONS = 25;
 const CLAUDE_MAX_RETRY_WAIT_MS = 5 * 60_000;
 // Used only if the Models API cannot say what a model allows.
 const CLAUDE_FALLBACK_MAX_TOKENS = 64_000;
+// Next's build traces the files the server reads, and its tracer runs os.homedir() itself wherever
+// a call to it is written out. It then lists the whole home folder as an input of the build. With
+// the project on another drive than the home folder, on Windows, that listing hits a folder it may
+// not read and the build fails. A call made through a parameter is one the tracer cannot run, and
+// the app gets the same folder when it runs.
+const userHome = (find = homedir) => find();
 // The database and its backups can hold a saved API key, and imports hold brokerage exports.
 const PRIVATE_PATHS = [
   ".env",
@@ -126,7 +132,7 @@ const PRIVATE_PATHS = [
     ".gnupg",
     path.join(".config", "gh"),
     path.join(".codex", "auth.json"),
-  ].map((p) => path.join(homedir(), p)),
+  ].map((p) => path.join(userHome(), p)),
 ];
 const CLAUDE_MAX_CHARS = 120_000;
 const CLAUDE_MIN_SECTION_CHARS = 40_000;
@@ -452,7 +458,7 @@ async function callCodex(
 ): Promise<CallResult> {
   const outputSchema = { ...z.toJSONSchema(schema), $schema: undefined };
   const codexConfig = path.join(
-    process.env.CODEX_HOME || path.join(homedir(), ".codex"),
+    process.env.CODEX_HOME || path.join(userHome(), ".codex"),
     "config.toml",
   );
   // The Codex CLI loads the user's own config, so these overrides keep an analysis to the pack
