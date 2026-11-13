@@ -23,40 +23,37 @@ function clean(cell: string | undefined) {
 function toNumber(cell: string | undefined): number | null {
   // Quantity, value and cost are never percents, so a percent means the row is out of line.
   if (cell?.includes("%")) return null;
-  // A sign may sit before a bracket, inside it, or after the dollar sign, and the dollar sign only
-  // before the digits or the bracket. Commas may only group thousands, so a decimal comma or a hex
-  // literal is unknown and never a different number.
-  const parts =
-    /^([+-]?)\s*(\$?)\s*(\(?)\s*([+-]?)\s*(\$?)\s*([+-]?)\s*((?:[1-9]\d{0,2}(?:,\d{3})+|\d*)(?:\.\d*)?(?:e[-+]?\d+)?)\s*(\)?)$/i.exec(
-      (cell ?? "").replace(/"/g, "").trim(),
-    );
-  if (!parts) return null;
-  const [
-    ,
-    before,
-    dollar,
-    open,
-    inside,
-    dollarInside,
-    last,
-    digits = "",
-    close,
-  ] = parts;
-  const signs = [before, inside, last].filter(Boolean);
-  // Two signs, two dollar signs, a plus on a bracketed amount or a bracket without its partner do
-  // not say which number is meant.
+  const text = (cell ?? "").replace(/"/g, "").trim();
+  // What stands before the digits: signs, a dollar sign, an opening bracket, and spaces between
+  // them. It is taken in one pass and judged with the spaces removed, because a pattern that
+  // allows a space between every part takes seconds to refuse a cell with a long run of them.
+  const lead = /^[-+$(\s]*/.exec(text)![0];
+  const before = lead.replace(/\s/g, "");
+  let digits = text.slice(lead.length);
+  const closed = digits.endsWith(")");
+  if (closed) digits = digits.slice(0, -1).trimEnd();
+  const signs = before.replace(/[$(]/g, "");
+  // Two signs, two dollar signs or brackets, a dollar sign or bracket out of place, a plus on a
+  // bracketed amount or a bracket without its partner do not say which number is meant.
   if (
     signs.length > 1 ||
-    (dollar && dollarInside) ||
-    !!open !== !!close ||
-    (open && signs[0] === "+") ||
-    !/\d/.test(digits)
+    !/^[+-]?\$?\(?[+-]?\$?[+-]?$/.test(before) ||
+    before.split("$").length > 2 ||
+    before.includes("(") !== closed ||
+    (closed && signs === "+")
+  )
+    return null;
+  // Commas may only group thousands, so a decimal comma or a hex literal is unknown and never a
+  // different number.
+  if (
+    !/\d/.test(digits) ||
+    !/^(?:[1-9]\d{0,2}(?:,\d{3})+|\d*)(?:\.\d*)?(?:e[-+]?\d+)?$/i.test(digits)
   )
     return null;
   const n = Number(digits.replace(/,/g, ""));
   if (!Number.isFinite(n)) return null;
   // Brackets and a minus both mean negative.
-  return open || signs[0] === "-" ? -n : n;
+  return closed || signs === "-" ? -n : n;
 }
 
 const usd = (n: number) =>

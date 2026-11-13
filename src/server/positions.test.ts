@@ -310,6 +310,37 @@ void test("csv: a number takes one sign, matched brackets and a dollar sign only
   }
 });
 
+void test("csv: a damaged cell is refused quickly however long it is", () => {
+  // An earlier pattern retried a run of spaces in every possible split: 80 spaces took 20 seconds
+  // and stalled the whole app while a preview was built.
+  const cells = [
+    `-${" ".repeat(5000)}x`,
+    `$${" ".repeat(5000)}x`,
+    `(${" ".repeat(5000)}x`,
+    `- $ ( ${" ".repeat(5000)}`,
+    `${"-".repeat(5000)}5`,
+    `${"1,111".repeat(2000)}x`,
+    `${"9".repeat(5000)}.${"9".repeat(5000)}e`,
+    `(${" ".repeat(5000)}5${" ".repeat(5000)}`,
+  ];
+  const started = performance.now();
+  for (const cell of cells) {
+    const parsed = parsePositionsCsv(
+      `Symbol,Quantity,Cost Basis\nAAA,1,"${cell}"`,
+    );
+    assert.equal(parsed.rows[0]?.costBasis, null, cell.slice(0, 12));
+  }
+  const took = performance.now() - started;
+  assert.ok(took < 2000, `eight cells took ${Math.round(took)} ms`);
+  // Spaces between the parts are still allowed, however many.
+  assert.equal(
+    parsePositionsCsv(
+      `Symbol,Quantity,Cost Basis\nAAA,1,"-${" ".repeat(5000)}$${" ".repeat(5000)}1,234.50"`,
+    ).rows[0]?.costBasis,
+    -1234.5,
+  );
+});
+
 void test("csv: abbreviated and decorated headers still find the right amounts", () => {
   const parsed = parsePositionsCsv(
     '" SYMBOL (Ticker) ",Name,Qty,Last Price,Mkt Val,Cost Basis Total\nAAA,Acme,2,10,20,15',
