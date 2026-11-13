@@ -3,11 +3,11 @@
 Portchecker is a local, single-user app with no login. The start and development commands bind to `127.0.0.1`. The app applies these request checks:
 
 - Page and API requests must be addressed to `localhost`, `127.0.0.1`, `[::1]` or a hostname listed in `ALLOWED_HOSTS`, a comma-separated value read from the environment or `.env`. Built static files are checked the same way.
-- A request other than GET or HEAD whose Origin differs from the address it was sent to is refused.
+- A request other than GET or HEAD whose Origin names a different host or port from the one it was sent to is refused. The scheme (`http` or `https`) is not compared.
 - A request to `/api/` that the browser's `Sec-Fetch-Site` header marks as coming from anywhere but the app's own pages or the address bar is refused, which stops a page on another site from calling the API with a GET. Browsers send that header only to `https` and loopback addresses, so this check does not apply to a hostname from `ALLOWED_HOSTS` that is reached over plain `http`.
 - Pages cannot be framed. Rendered images are restricted to local or embedded images, and plugins, a `<base>` pointing elsewhere and forms posting to another site are blocked. Responses carry `X-Content-Type-Options: nosniff` and `Referrer-Policy: same-origin`.
 
-A request that carries neither an Origin nor a `Sec-Fetch-Site` header, such as one from a script or command-line tool on the same machine, passes the second and third checks. These checks are not authentication. Anyone who can reach an allowed address can use the app, so enable network access only on a network you trust.
+A request that carries neither an Origin nor a `Sec-Fetch-Site` header, such as one from a script or command-line tool on the same machine, passes the second and third checks. So does a GET from a browser that does not send `Sec-Fetch-Site`, which older browsers do not. These checks are not authentication. Anyone who can reach an allowed address can use the app, so enable network access only on a network you trust.
 
 ## Stored on your machine
 
@@ -22,6 +22,8 @@ The SQLite database holds positions, decisions, settings and research history. A
 FMP receives ticker requests and its API key. SEC requests include your configured name and email. AI calls send prompts and research context to OpenAI through Codex or to Anthropic: that includes dossier text, questions, position quantities, value, weight, cost basis, gains, portfolio totals and cash share. Claude API mode receives shortened filing sections and selected passages rather than whole filing files. Claude subscription mode runs the official Claude Code CLI and permits read/search access to the research pack, including full filing text. A brief call receives portfolio facts and the reviewed holdings. Logged decisions are added to the saved brief after the model call; the app does not add decision notes to prompts.
 
 Screenshot extraction sends the entire image to the selected provider before confirmation. Crop identifying details first. CSV parsing stays local. Fallback is enabled by default and can send a failed call to the other configured provider. Web research also sends model-chosen search terms to web search services. Provider retention and account policies apply to anything sent.
+
+`pnpm build` and `pnpm dev` download the app's two typefaces from Google Fonts. That request carries no portfolio data. The built app serves its own copies and its pages do not load anything from Google.
 
 ## Claude subscription access
 
