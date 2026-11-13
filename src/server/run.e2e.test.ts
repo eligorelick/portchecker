@@ -670,6 +670,34 @@ assert.equal(shown.result.action, 'trim');
 );
 
 scenario(
+  "a revision that cites nothing fails the ticker and keeps the last real review",
+  String.raw`
+await run();
+const full = await update();
+mock.timers.tick(3 * 3600_000);
+// A light review reports a change, the check contradicts it, and the revision comes back as an
+// empty hold: what a model returns when it could not read its files.
+script('analyst', { ...analysis('AAA', true, 'hold'), status: 'thesis_weakened' });
+script('verifier', verification('AAA', 'contradicted', true));
+script('analyst', { ...analysis('AAA', true, 'hold'), headline: 'No material change.', what_changed: [], evidence: [] });
+const stub = globalThis.modelStub;
+let checks = 0;
+globalThis.modelStub = async (opts) => {
+  const answer = await stub(opts);
+  // If the empty revision is sent to a second check, that check has nothing to check.
+  return opts.role === 'verifier' && ++checks === 2
+    ? { ...answer, data: { ...answer.data, checks: [] } }
+    : answer;
+};
+await runResearch();
+globalThis.modelStub = stub;
+assert.match((await last('research_runs')).log_text, /AAA: FAILED\. The analyst returned no evidence/);
+assert.equal((await update()).id, full.id);
+assert.equal((await latestUpdates()).get('AAA').id, full.id);
+`,
+);
+
+scenario(
   "LIGHT add-to-hold change is verified and remains visible",
   String.raw`
 script('analyst', analysis('AAA', false, 'add'));

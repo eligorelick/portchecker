@@ -1655,9 +1655,11 @@ async function reviewTicker(opts: {
         schema: holdingAnalystSchema,
       });
       result = analyst.data;
-      stopIfUnusable(depth, result, undefined, previousAction);
+      // A revision answers a failed check, so it has to cite something whatever the depth: an
+      // empty one is judged as a full review is.
+      stopIfUnusable("FULL", result, undefined, previousAction);
       verifier = await verify();
-      stopIfUnusable(depth, result, verifier.data, previousAction);
+      stopIfUnusable("FULL", result, verifier.data, previousAction);
       revised = true;
     }
   }
