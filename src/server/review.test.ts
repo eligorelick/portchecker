@@ -2349,6 +2349,21 @@ void test("an address the files hold in full is known however the page reads it"
     );
     assert.equal(item?.link_not_in_files ?? false, false, url);
   }
+  // pack.json holds the vendor's news links as JSON, where the address ends at a quote.
+  const [fromPack] = updateFunctions.markUnknownLinks(
+    [
+      {
+        ...evidence("Vendor news"),
+        source: "news:https://news.example/story|part-2",
+      },
+    ],
+    JSON.stringify(
+      { news_last_7_days: [{ url: "https://news.example/story|part-2" }] },
+      null,
+      2,
+    ),
+  );
+  assert.equal(fromPack?.link_not_in_files ?? false, false);
   // A longer address that merely starts with a known one is still unknown.
   const [longer] = updateFunctions.markUnknownLinks(
     [
@@ -2395,12 +2410,20 @@ void test("a filing's own address is known from the filing files, not from pack.
       path.join(temp, "review.json"),
       JSON.stringify({ evidence: [{ source: invented }] }),
     );
+    // Nor is the copy of my notes. Its Current view is what an earlier analyst wrote, so a link
+    // found only there would be yesterday's review vouching for today's.
+    const fromNotes = "https://files.example/from-the-current-view";
+    writeFileSync(
+      path.join(temp, "dossier.md"),
+      `# S\n\n## Current view\n\nSee ${fromNotes}\n`,
+    );
     const marked = updateFunctions.markUnknownLinks(
       [
         `edgar:${accession} ${folder}/a.htm`,
         `${folder}/a.htm`,
         `${folder}/ex13.htm`,
         invented,
+        `news:${fromNotes}`,
       ].map((source) => ({ ...evidence(source), source })),
       runFunctions.researchFilesText(temp),
     );
@@ -2410,20 +2433,12 @@ void test("a filing's own address is known from the filing files, not from pack.
     );
   } finally {
     rmSync(temp, { recursive: true, force: true });
-    // Nor is the copy of my notes. Its Current view is what an earlier analyst wrote, so a link
-    // found only there would be yesterday's review vouching for today's.
-    const fromNotes = "https://files.example/from-the-current-view";
-    writeFileSync(
-      path.join(temp, "dossier.md"),
-      `# S\n\n## Current view\n\nSee ${fromNotes}\n`,
-    );
   }
 });
 
 void test("saved evidence marks only news links absent from the research files", () => {
   assert.equal(typeof updateFunctions.markUnknownLinks, "function");
   const known = "https://example.com/article?x=1&y=2";
-        `news:${fromNotes}`,
   const absent = "https://example.com/mistyped";
   const items = [
     { ...evidence("Known news"), source: `news:${known}` },
