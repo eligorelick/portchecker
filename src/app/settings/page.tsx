@@ -814,7 +814,9 @@ export default function SettingsPage() {
             )
           )}
           {save.error && (
-            <span className="text-bad text-sm">{save.error.message}</span>
+            <span role="alert" className="text-bad text-sm">
+              {save.error.message}
+            </span>
           )}
         </div>
       )}

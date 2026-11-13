@@ -373,7 +373,9 @@ export default function ImportPage() {
                   </button>
                 </div>
                 {importCsv.error && (
-                  <p className="text-bad text-sm">{importCsv.error.message}</p>
+                  <p role="alert" className="text-bad text-sm">
+                    {importCsv.error.message}
+                  </p>
                 )}
               </>
             )}
@@ -617,7 +619,7 @@ function HoldingForm({ holding }: { holding?: Holding }) {
         )}
       </div>
       {(form.problem ?? upsert.error ?? remove.error) && (
-        <p className="text-bad col-span-full text-sm">
+        <p role="alert" className="text-bad col-span-full text-sm">
           {form.problem ?? (upsert.error ?? remove.error)?.message}
         </p>
       )}

@@ -426,7 +426,9 @@ function RunNow({ billingNote }: { billingNote: string | null }) {
           </p>
         )}
         {start.error && (
-          <p className="text-rail-down text-xs">{start.error.message}</p>
+          <p role="alert" className="text-rail-down text-xs">
+            {start.error.message}
+          </p>
         )}
       </div>
       <button

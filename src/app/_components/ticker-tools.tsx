@@ -123,7 +123,9 @@ export function DossierEditor({
           Cancel
         </button>
         {save.error && (
-          <span className="text-bad text-sm">{save.error.message}</span>
+          <span role="alert" className="text-bad text-sm">
+            {save.error.message}
+          </span>
         )}
       </div>
     </div>
@@ -172,7 +174,9 @@ export function ThesisDrafter({ ticker }: { ticker: string }) {
             : "Draft a thesis for me"}
         </button>
         {draft.error && (
-          <p className="text-bad text-sm">{draft.error.message}</p>
+          <p role="alert" className="text-bad text-sm">
+            {draft.error.message}
+          </p>
         )}
       </div>
     );
@@ -236,7 +240,9 @@ export function ThesisDrafter({ ticker }: { ticker: string }) {
           Discard draft
         </button>
         {accept.error && (
-          <span className="text-bad text-sm">{accept.error.message}</span>
+          <span role="alert" className="text-bad text-sm">
+            {accept.error.message}
+          </span>
         )}
       </div>
     </div>
@@ -268,7 +274,11 @@ export function AskBox({ ticker }: { ticker: string }) {
       >
         {ask.isPending ? "Reading the research files" : "Ask"}
       </button>
-      {ask.error && <p className="text-bad text-sm">{ask.error.message}</p>}
+      {ask.error && (
+        <p role="alert" className="text-bad text-sm">
+          {ask.error.message}
+        </p>
+      )}
       {ask.data && (
         <div className="space-y-2 pt-2 text-sm" aria-live="polite">
           <p className="model-text max-w-prose whitespace-pre-wrap">
@@ -385,7 +395,11 @@ export function DecisionForm({ ticker }: { ticker: string }) {
           ✓ Logged: {logged}
         </p>
       )}
-      {add.error && <p className="text-bad">{add.error.message}</p>}
+      {add.error && (
+        <p role="alert" className="text-bad">
+          {add.error.message}
+        </p>
+      )}
     </form>
   );
 }
