@@ -519,7 +519,8 @@ export default async function TodayPage() {
                 href={`/t/${missingThesis[0].ticker}?tab=notes`}
                 className="btn btn-small mt-2"
               >
-                Start with {missingThesis[0].ticker}, your largest
+                Start with {missingThesis[0].ticker}
+                {missingThesis.length > 1 && ", the largest of them"}
               </Link>
             </section>
           )}

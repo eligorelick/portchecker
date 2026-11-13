@@ -139,7 +139,8 @@ function Evidence({
       ) : (
         <>
           <p className="text-warn text-sm font-medium">
-            {flagged.length} of {entries.length} claims need a look.
+            {flagged.length} of {entries.length} claims{" "}
+            {flagged.length === 1 ? "needs" : "need"} a look.
           </p>
           <ul className="divide-line divide-y">
             {flagged.map((entry, i) => (
