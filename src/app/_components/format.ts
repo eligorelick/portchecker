@@ -76,7 +76,8 @@ export const shortDate = (day: string) =>
       })
     : "no date";
 
-const validDay = (day: string) => {
+/** A YYYY-MM-DD that names a real day. Date parsing alone reads "2026-02-30" as March 2. */
+export const validDay = (day: string) => {
   const date = localDate(day);
   return (
     /^\d{4}-\d{2}-\d{2}$/.test(day) &&
