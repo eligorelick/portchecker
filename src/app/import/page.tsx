@@ -243,19 +243,36 @@ export default function ImportPage() {
                   <table className="w-full text-left text-sm">
                     <thead className="text-muted text-xs">
                       <tr>
-                        <th className="py-1 pr-4 font-medium">Ticker</th>
-                        <th className="py-1 pr-4 font-medium">Name</th>
-                        <th className="py-1 pr-4 text-right font-medium">
+                        <th scope="col" className="py-1 pr-4 font-medium">
+                          Ticker
+                        </th>
+                        <th scope="col" className="py-1 pr-4 font-medium">
+                          Name
+                        </th>
+                        <th
+                          scope="col"
+                          className="py-1 pr-4 text-right font-medium"
+                        >
                           Quantity
                         </th>
-                        <th className="py-1 pr-4 text-right font-medium">
+                        <th
+                          scope="col"
+                          className="py-1 pr-4 text-right font-medium"
+                        >
                           Market value
                         </th>
-                        <th className="py-1 pr-4 text-right font-medium">
+                        <th
+                          scope="col"
+                          className="py-1 pr-4 text-right font-medium"
+                        >
                           Total cost basis
                         </th>
-                        <th className="py-1 pr-4 font-medium">Account</th>
-                        <th className="py-1 font-medium">Change</th>
+                        <th scope="col" className="py-1 pr-4 font-medium">
+                          Account
+                        </th>
+                        <th scope="col" className="py-1 font-medium">
+                          Change
+                        </th>
                       </tr>
                     </thead>
                     <tbody>

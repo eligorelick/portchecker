@@ -407,7 +407,7 @@ export default async function TickerPage({
                 className="tab"
               >
                 <span className="sm:hidden">{t.short}</span>
-                <span className="hidden sm:inline">{t.label}</span>
+                <span className="hidden sm:inline">{t.label}</span>{" "}
                 {t.id === "notes" && !thesis && (
                   <span className="text-warn ml-1.5 hidden text-xs font-medium sm:inline">
                     No thesis
