@@ -2283,6 +2283,32 @@ void test("saved evidence marks an absent link however the source writes it", ()
   );
 });
 
+void test("an address the files hold in full is known however the page reads it", () => {
+  // The page reads a link up to a space or bracket, so it keeps a "|" or a quote that the older
+  // pattern stops at. The files are read both ways too, or a correct citation looks unknown.
+  for (const url of [
+    "https://news.example/story|part-2",
+    'https://news.example/search?q="margin"',
+  ]) {
+    const [item] = updateFunctions.markUnknownLinks(
+      [{ ...evidence("Cited as written"), source: `news:${url}` }],
+      `- Finding\n  Source: Example News, 2026-11-03, ${url}\n`,
+    );
+    assert.equal(item?.link_not_in_files ?? false, false, url);
+  }
+  // A longer address that merely starts with a known one is still unknown.
+  const [longer] = updateFunctions.markUnknownLinks(
+    [
+      {
+        ...evidence("Not the same page"),
+        source: "news:https://news.example/story|part-2/other",
+      },
+    ],
+    "Source: Example News, 2026-11-03, https://news.example/story|part-2\n",
+  );
+  assert.equal(longer?.link_not_in_files, true);
+});
+
 void test("a filing's own address is known from the filing files, not from pack.json", () => {
   const temp = mkdtempSync(path.join(tmpdir(), "portchecker-links-"));
   try {

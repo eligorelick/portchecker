@@ -67,7 +67,12 @@ export function markUnknownLinks(
   const trimmed = (url: string) => url.replace(/[),.;]+$/, "");
   const urls = (text: string) =>
     (text.match(/https?:\/\/[^\s<>"\\|]+/gi) ?? []).map(trimmed);
-  const known = new Set(urls(fileText));
+  // The files are read both ways as well: the page's pattern keeps a "|" or a quote inside an
+  // address, and a citation that copies such an address in full is not an unknown one.
+  const known = new Set([
+    ...urls(fileText),
+    ...(fileText.match(/https?:\/\/[^\s)]+/gi) ?? []).map(trimmed),
+  ]);
   // A source is read both as the files are and exactly as the page links it, whatever precedes the
   // link, so the page can never make clickable an address this check did not see.
   const linked = (source: string) => [
