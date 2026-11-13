@@ -584,7 +584,7 @@ function cashFlowRowsInDoubt(cash: Row[], income: Row[]) {
 const EBITDA_GAP = 0.25;
 
 /** Quarters whose EBITDA is not their own pretax income, interest and D&A. QCOM's Q4 was negative. */
-function ebitdaRowsInDoubt(rows: Row[]) {
+export function ebitdaRowsInDoubt(rows: Row[]) {
   return rows.filter((r) => {
     const ebitda = num(r.ebitda);
     const pretax = num(r.incomeBeforeTax);

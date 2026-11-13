@@ -39,6 +39,7 @@ import {
 import {
   BANK_LIKE,
   cashFlowMissing,
+  ebitdaRowsInDoubt,
   fetchProfile,
   fundamentalContext,
   hasReported,
@@ -832,17 +833,7 @@ export async function writePack(opts: {
     );
   // Annual ratios can be absent, so their history cannot be the only record of a bad income year.
   const badEbitdaYears = new Set(
-    fmp.income
-      .filter((quarter) => {
-        const ebitda = num(quarter.ebitda);
-        const pretax = num(quarter.incomeBeforeTax);
-        if (ebitda === null || pretax === null) return false;
-        const expected =
-          pretax +
-          Math.abs(num(quarter.interestExpense) ?? 0) +
-          (num(quarter.depreciationAndAmortization) ?? 0);
-        return Math.abs(ebitda - expected) > Math.abs(expected) * 0.25;
-      })
+    ebitdaRowsInDoubt(fmp.income)
       .map((quarter) => quarter.fiscalYear)
       .filter((year) => typeof year === "string"),
   );
