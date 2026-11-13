@@ -945,7 +945,8 @@ class FakeAnthropic {
       let rejectHang;
       return {
         on() { return this; },
-        abort() { rejectHang?.(new Error('Request was aborted.')); },
+        // The real SDK ends an aborted stream with an API error that has no status.
+        abort() { rejectHang?.(new APIError(undefined, undefined)); },
         get currentMessage() { return reply?.partial; },
         finalMessage: async () => {
           if (reply?.hang) return new Promise((_, reject) => { rejectHang = reject; });
@@ -1598,6 +1599,52 @@ assert.deepEqual(await listClaudeModels(settings), [
   { id: 'b', efforts: [] },
   { id: 'c', efforts: [] },
 ]);
+`,
+);
+
+runtimeScenario(
+  "a stopped run ends the call in flight on every provider, with no retry and no second provider",
+  String.raw`
+const keepAlive = setInterval(() => {}, 1000);
+settings.fallback_enabled = true;
+// Still running half a second after the stop means the call was not ended.
+const endsOnStop = async (start) => {
+  const stop = new AbortController();
+  const call = start(stop.signal);
+  call.catch(() => {});
+  await new Promise((r) => realSetTimeout(r, 50));
+  stop.abort();
+  const late = new Promise((r) => realSetTimeout(() => r('still running'), 500));
+  await assert.rejects(Promise.race([call, late]), (error) => {
+    assert.doesNotMatch(error.message, /, then /, 'the other provider was asked after a stop');
+    return true;
+  });
+  return stop.signal;
+};
+
+// Claude with an API key: the stream is aborted and not retried.
+state.responses.push({ hang: true });
+await endsOnStop((signal) => runModel({ ...base, signal }));
+assert.equal(state.requests.length, 1, 'the aborted stream was retried');
+assert.equal(state.codexInput, null, 'the other provider was tried after a stop');
+
+// Claude subscription: the Claude Code process is ended.
+settings.claude_auth_mode = 'subscription';
+state.cliResponses = [{ hang: true }];
+const stopped = await endsOnStop((signal) => runModel({ ...base, signal }));
+assert.equal(state.cliRequests.length, 1);
+assert.equal(state.codexInput, null, 'the other provider was tried after a stop');
+
+// ChatGPT through Codex.
+state.codexHang = true;
+await endsOnStop((signal) => runModel({ ...chatgptOnly, signal }));
+state.codexHang = false;
+
+// A call asked for after the stop never starts.
+state.cliResponses = [];
+await assert.rejects(runModel({ ...base, signal: stopped }));
+assert.equal(state.cliRequests.length, 1);
+clearInterval(keepAlive);
 `,
 );
 

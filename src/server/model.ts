@@ -156,7 +156,16 @@ type CallOptions<S extends ZodType = ZodType> = {
   /** What was asked, when the prompt holds a question. Claude cannot search files, so code does. */
   question?: string;
   onUsage?: (usage: Usage) => void;
+  /** Ends the call when aborted: a stopped run should not pay for answers nobody will read. */
+  signal?: AbortSignal;
 };
+
+/** Runs `end` when the signal aborts. Call the result to stop listening once the call is over. */
+function onAbort(signal: AbortSignal | undefined, end: () => void) {
+  if (signal?.aborted) end();
+  signal?.addEventListener("abort", end, { once: true });
+  return () => signal?.removeEventListener("abort", end);
+}
 
 const IMAGE_MEDIA_TYPES: Record<
   string,
@@ -356,6 +365,7 @@ async function streamClaude(
   client: Anthropic,
   request: Anthropic.Messages.MessageStreamParams,
   onUsage?: (usage: Usage) => void,
+  signal?: AbortSignal,
 ) {
   for (let attempt = 1; ; attempt++) {
     let stalled = false;
@@ -364,6 +374,7 @@ async function streamClaude(
       stalled = true;
       stream.abort();
     });
+    const ignoreStop = onAbort(signal, () => stream.abort());
     stream.on("streamEvent", stall.touch);
     try {
       return await stream.finalMessage();
@@ -374,6 +385,8 @@ async function streamClaude(
         onUsage?.(claudeUsage(partial));
       }
       if (stalled) throw new Error(STALL_MESSAGE);
+      // An aborted stream reads as a dropped connection, which would otherwise be tried again.
+      if (signal?.aborted) throw error;
       const delay = streamCanRetry(error)
         ? streamRetryDelayMs(error, attempt)
         : null;
@@ -381,6 +394,7 @@ async function streamClaude(
       await new Promise((r) => setTimeout(r, delay));
     } finally {
       stall.stop();
+      ignoreStop();
     }
   }
 }
@@ -453,7 +467,7 @@ export function mcpServersOff(toml: string) {
 }
 
 async function callCodex(
-  { workingDirectory, prompt, schema, webSearch, images }: CallOptions,
+  { workingDirectory, prompt, schema, webSearch, images, signal }: CallOptions,
   settings: Settings,
 ): Promise<CallResult> {
   const outputSchema = { ...z.toJSONSchema(schema), $schema: undefined };
@@ -537,6 +551,7 @@ async function callCodex(
     stalled = true;
     controller.abort();
   });
+  const ignoreStop = onAbort(signal, () => controller.abort());
   let text = "";
   try {
     const { events } = await thread.runStreamed(input, {
@@ -555,6 +570,7 @@ async function callCodex(
     throw stalled ? new Error(STALL_MESSAGE) : error;
   } finally {
     stall.stop();
+    ignoreStop();
   }
   return {
     text,
@@ -1246,6 +1262,7 @@ async function callClaude(
     images,
     question,
     onUsage,
+    signal,
   }: CallOptions,
   settings: Settings,
 ): Promise<CallResult> {
@@ -1311,6 +1328,7 @@ async function callClaude(
           : {}),
       },
       onUsage,
+      signal,
     );
     const billed = claudeUsage(response.usage);
     onUsage?.(billed);
@@ -1387,11 +1405,20 @@ type ClaudeCodeMessage = {
 };
 
 async function callClaudeCode(
-  { workingDirectory, prompt, schema, webSearch, images, onUsage }: CallOptions,
+  {
+    workingDirectory,
+    prompt,
+    schema,
+    webSearch,
+    images,
+    onUsage,
+    signal,
+  }: CallOptions,
   settings: Settings,
 ): Promise<CallResult> {
   const status = await claudeCodeStatus();
   if (!status.signedIn) throw new Error(`${status.detail} ${status.advice}`);
+  signal?.throwIfAborted();
   const tools = webSearch ? "WebSearch,WebFetch" : "Read,Grep,Glob";
   const args = [
     "--print",
@@ -1439,6 +1466,7 @@ async function callClaudeCode(
     { type: "text", text: prompt },
   ];
   let child: ReturnType<typeof spawn> | undefined;
+  let ignoreStop: (() => void) | undefined;
   let stalled = false;
   let final: ClaudeCodeMessage | undefined;
   let messageId = "message";
@@ -1519,6 +1547,7 @@ async function callClaudeCode(
         stdio: ["pipe", "pipe", "pipe"],
       });
       child = running;
+      ignoreStop = onAbort(signal, () => running.kill());
       let stderr = "";
       let protocolError: Error | undefined;
       const lines = createInterface({ input: running.stdout });
@@ -1613,6 +1642,7 @@ async function callClaudeCode(
     };
   } finally {
     stall.stop();
+    ignoreStop?.();
     const usage = usageSoFar();
     if (usage.inputTokens || usage.outputTokens || usage.webSearches)
       onUsage?.(usage);
@@ -1638,6 +1668,8 @@ async function callProvider(
   options: CallOptions,
   settings: Settings,
 ): Promise<CallResult> {
+  // Also turns away the retry and the second attempt of a call that was stopped.
+  options.signal?.throwIfAborted();
   try {
     switch (provider) {
       case "chatgpt":
@@ -1765,7 +1797,8 @@ export async function runModel<S extends ZodType>(
     };
   } catch (error) {
     // Fallback is for a provider that failed, not for output that failed the schema.
-    if (error instanceof SchemaError || opts.provider) throw error;
+    if (error instanceof SchemaError || opts.provider || opts.signal?.aborted)
+      throw error;
     const other = otherProvider(chosen);
     if (!settings.fallback_enabled || !(await providerReady(other, settings))) {
       throw error;
