@@ -218,6 +218,46 @@ void test("depth: a week without a full review buys one, and six days do not", (
   assert.match(reviewDepth(quiet, [], null).why, /no full review/);
 });
 
+void test("depth: each trigger is strictly over its limit, so a move or an age exactly on it stays light", () => {
+  for (const changePercentage of [5, -5]) {
+    const onTheLine = fmp({ quote: { changePercentage } });
+    assert.equal(reviewDepth(onTheLine, [], asSeen(1)).depth, "LIGHT");
+  }
+  for (const changePercentage of [5.01, -5.01]) {
+    const over = reviewDepth(
+      fmp({ quote: { changePercentage } }),
+      [],
+      asSeen(1),
+    );
+    assert.equal(over.depth, "FULL");
+    assert.match(over.why, /^day move of 5\.0%$/);
+  }
+  // Five sessions back the price was 100: 110 is +10.00%, and 110.01 rounds to +10.01%.
+  const fiveDays = (latest: number) =>
+    reviewDepth(
+      fmp({
+        quote: { changePercentage: 0 },
+        history: history(latest, 100, 100, 100, 100, 100),
+      }),
+      [],
+      asSeen(1),
+    );
+  assert.equal(fiveDays(110).depth, "LIGHT");
+  assert.equal(fiveDays(90).depth, "LIGHT");
+  assert.deepEqual(fiveDays(110.01), {
+    depth: "FULL",
+    why: "5-day move of 10.0%",
+  });
+  assert.equal(fiveDays(89.99).depth, "FULL");
+  // Seven days to the millisecond is not yet more than seven.
+  const quiet = fmp({ quote: { changePercentage: 0 } });
+  assert.equal(reviewDepth(quiet, [], asSeen(7)).depth, "LIGHT");
+  assert.deepEqual(reviewDepth(quiet, [], asSeen(7 + 1 / 86400000)), {
+    depth: "FULL",
+    why: "last full review was 7 days ago",
+  });
+});
+
 void test("depth: a quote with no real time cannot prove it was seen", () => {
   const zero = fmp({ quote: { changePercentage: 6, timestamp: 0 } });
   assert.equal(reviewDepth(zero, [], asSeen(1)).depth, "FULL");

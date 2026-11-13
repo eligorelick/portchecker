@@ -643,6 +643,129 @@ void test("portfolio: a short is never netted into the top five, however few pos
   );
 });
 
+void test("portfolio: weights, cash share and sectors are shares of net value, with a short or negative cash", () => {
+  const sum = (weights: (number | null)[]) =>
+    weights.reduce<number>((total, w) => total + (w ?? 0), 0);
+  // Long $1,000 of technology, short $500 of energy, cash $500: net value $1,000.
+  const short = computePortfolioFacts(
+    [holding("LONG", 10), holding("SHRT", -5), holding("CASH", 500)],
+    new Map([
+      ["LONG", { price: 100 }],
+      ["SHRT", { price: 100 }],
+    ]),
+    new Map([
+      ["LONG", "Technology"],
+      ["SHRT", "Energy"],
+    ]),
+    "2026-11-05",
+  );
+  assert.equal(short.total_value, 1000);
+  assert.deepEqual(
+    short.positions.map((p) => [p.ticker, p.value, p.weight_pct]),
+    [
+      ["LONG", 1000, 100],
+      ["CASH", 500, 50],
+      ["SHRT", -500, -50],
+    ],
+  );
+  assert.equal(sum(short.positions.map((p) => p.weight_pct)), 100);
+  assert.equal(short.cash_pct, 50);
+  assert.deepEqual(short.sector_weights, [
+    { sector: "Technology", weight_pct: 100 },
+    { sector: "Cash", weight_pct: 50 },
+    { sector: "Energy", weight_pct: -50 },
+  ]);
+  assert.equal(sum(short.sector_weights.map((s) => s.weight_pct)), 100);
+  // Three longs of $400 bought partly on margin: cash is -$200 and net value $1,000.
+  const margin = computePortfolioFacts(
+    [holding("A"), holding("B"), holding("C"), holding("CASH", -200)],
+    new Map(["A", "B", "C"].map((ticker) => [ticker, { price: 400 }])),
+    new Map(),
+    "2026-11-05",
+  );
+  assert.equal(margin.total_value, 1000);
+  assert.equal(margin.cash_value, -200);
+  assert.equal(margin.cash_pct, -20);
+  assert.equal(sum(margin.positions.map((p) => p.weight_pct)), 100);
+  assert.equal(margin.top5_concentration_pct, 120);
+});
+
+void test("portfolio: a short gains on the day when its stock falls, and the percent is on yesterday's net value", () => {
+  const facts = computePortfolioFacts(
+    [holding("LONG", 10), holding("SHRT", -5), holding("CASH", 500)],
+    new Map([
+      ["LONG", quote(100, 2, "2026-11-05")],
+      ["SHRT", quote(100, -1, "2026-11-05")],
+    ]),
+    new Map(),
+    "2026-11-05",
+  );
+  const short = facts.positions.find((p) => p.ticker === "SHRT");
+  assert.equal(short?.day_change_value, 5);
+  assert.equal(short?.day_change_pct, -1);
+  // +$20 on the long and +$5 on the short, on $975 the day before.
+  assert.equal(facts.day_change_value, 25);
+  assert.equal(facts.day_change_pct, 2.56);
+});
+
+void test("portfolio: a quote is stale after four days, and a quote that is not a number is no price", () => {
+  const dated = (date: string) =>
+    computePortfolioFacts(
+      [holding("AAA")],
+      new Map([["AAA", quote(100, 0, date)]]),
+      new Map(),
+      "2026-11-05",
+    ).quote_dates.stale;
+  assert.deepEqual(dated("2026-11-01"), []);
+  assert.deepEqual(dated("2026-10-31"), ["AAA"]);
+  const facts = computePortfolioFacts(
+    [holding("NAN"), holding("INF"), holding("TEXT"), holding("MOVE")],
+    new Map<string, Record<string, unknown>>([
+      ["NAN", { price: Number.NaN, change: 1 }],
+      ["INF", { price: Infinity, change: 1 }],
+      ["TEXT", { price: "100", change: 1 }],
+      ["MOVE", { price: 50, change: Number.NaN, changePercentage: "2" }],
+    ]),
+    new Map(),
+    "2026-11-05",
+  );
+  assert.deepEqual(facts.missing_prices.sort(), ["INF", "NAN", "TEXT"]);
+  assert.equal(facts.total_value, 50);
+  const move = facts.positions.find((p) => p.ticker === "MOVE");
+  assert.deepEqual(
+    [move?.value, move?.day_change_value, move?.day_change_pct],
+    [50, null, null],
+  );
+  assert.equal(facts.day_change_value, null);
+  assert.doesNotMatch(JSON.stringify(facts), /NaN|Infinity/);
+});
+
+void test("csv: negative cash, scientific notation, a lower-case symbol and a formula-like symbol", () => {
+  const parsed = parsePositionsCsv(
+    [
+      "Symbol,Description,Quantity,Price,Market Value,Cost Basis,Security Type",
+      'hldn,Holden,1e2,$10.00,"$1,000.00","$900.00",Equity',
+      "=SUM(A1),Formula,1,$1.00,$1.00,$1.00,Equity",
+      "+CMD,Formula,1,$1.00,$1.00,$1.00,Equity",
+      "@SUM,Formula,1,$1.00,$1.00,$1.00,Equity",
+      'Cash & Cash Investments,--,--,--,"($250.50)",--,Cash and Money Market',
+    ].join("\n"),
+  );
+  assert.equal(parsed.error, null);
+  assert.deepEqual(
+    parsed.rows.map((r) => [r.ticker, r.quantity, r.costBasis]),
+    [
+      ["HLDN", 100, 900],
+      ["CASH", -250.5, null],
+    ],
+  );
+  assert.deepEqual(
+    parsed.skipped.map((s) => s.row),
+    ["=SUM(A1)", "+CMD", "@SUM"],
+  );
+  assert.ok(parsed.skipped.every((s) => s.reason === "not a stock ticker"));
+});
+
 void test("portfolio: a complete fund breakdown has no unallocated remainder", () => {
   const facts = computePortfolioFacts(
     [holding("FUND")],
