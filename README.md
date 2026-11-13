@@ -48,7 +48,7 @@ The numbers below were measured on the commit that last changed this section. Re
 - **Coverage is about 93% of branches and 94% of functions** in Node 22's built-in report (`node --test --experimental-test-coverage "src/**/*.test.ts"`). Treat it as a rough guide: the report counts the test files as well as the application, and its line figure for one unchanged file moved enough between two runs to put the total at 93.2% in one and 94.1% in the other.
 - **About 27,700 lines of tests for about 17,300 lines of application code**, counted over the tracked files in `src/` and `scripts/`.
 - **The suite passes with the clock in `UTC`, `Asia/Tokyo` and `America/Los_Angeles`.** The app sets the computer's calendar beside US market dates, so the same tests are run in each zone.
-- **Continuous integration** runs typecheck, lint with zero warnings allowed, the format check, the tests and a production build on Ubuntu and Windows with Node 22 ([workflow](.github/workflows/ci.yml)).
+- **A continuous-integration workflow** is set up to run typecheck, lint with zero warnings allowed, the format check, the tests and a production build on Ubuntu and Windows with Node 22, on every push to `main` and every pull request ([workflow](.github/workflows/ci.yml)). The badge at the top shows its latest result. Before it was added, the same steps were run by hand on Windows 11 and, from a fresh clone, on Ubuntu under WSL.
 - **Fixes carry their evidence.** Since commit `85e803a`, a fix to behaviour is committed with a test that fails without it or, where a test cannot show it, a before-and-after check on a built server or in a browser. Each such commit message says what was wrong and how the fix was shown to work.
 
 These checks have limits, listed with the others under [Known limits](#privacy-cost-and-limitations): the tests supply the vendor and model answers themselves, so they check the code around the models and not the quality of a model's research, and a real Schwab export has not been validated end to end.
@@ -78,7 +78,7 @@ The app stores data locally in SQLite and Markdown files. AI processing uses ext
 - A separate, writable project directory. On Windows, keep it outside `AppData\Local\Temp`; the tested Codex sandbox could not start processes there. Keep its path short as well: `pnpm dev` failed with "Module not found" from a project folder whose path was 122 characters long and worked from one of 113, while `pnpm build` and `pnpm start` worked from both.
 - For real research: Financial Modeling Prep access, a name/email for the SEC request identity, and at least one AI provider below. The app has been tested with FMP Starter; endpoint availability depends on your plan.
 
-The automated checks run on Linux and Windows. Research runs with real providers have been made only on Windows, macOS is untested, and the Linux/macOS scheduling examples below have not been run.
+The automated checks have been run on Windows 11 and on Ubuntu under WSL. Research runs with real providers have been made only on Windows, macOS is untested, and the Linux/macOS scheduling examples below have not been run.
 
 Download or clone the source, open a terminal in the project root, then install:
 
