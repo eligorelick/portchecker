@@ -19,26 +19,22 @@ const MODES: {
   id: ProviderMode;
   title: string;
   blurb: string;
-  cost: string;
 }[] = [
   {
     id: "chatgpt",
     title: "ChatGPT",
     blurb: "Uses your ChatGPT plan through codex login.",
-    cost: "No per-use cost",
   },
   {
     id: "claude",
     title: "Claude",
     blurb: "Uses the Claude access selected below.",
-    cost: "Subscription or API",
   },
   {
     id: "both",
     title: "Both",
     blurb:
       "One analyzes each stock. The other checks the work and gives its own call, and disagreements are flagged.",
-    cost: "Claude uses the access selected below",
   },
 ];
 
@@ -363,7 +359,7 @@ export default function SettingsPage() {
               <span className="text-muted mt-1 flex-1 text-sm">{m.blurb}</span>
               <span className="mt-2 text-xs font-medium">
                 {m.id === "chatgpt"
-                  ? m.cost
+                  ? "No per-use cost"
                   : subscription
                     ? "Uses Claude subscription limits"
                     : "Claude is billed per token"}

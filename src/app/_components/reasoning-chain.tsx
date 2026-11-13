@@ -94,8 +94,7 @@ function EvidenceRow({
       <div className="text-muted mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs">
         <VerdictMark verdict={entry.check?.verdict ?? null} />
         <SourceLink source={entry.source} links={links} />
-        {(entry as EvidenceEntry & { link_not_in_files?: boolean })
-          .link_not_in_files && (
+        {entry.link_not_in_files && (
           <span className="text-warn">Link not in the research files</span>
         )}
         {entry.date && <span>{entry.date}</span>}
@@ -108,8 +107,6 @@ function EvidenceRow({
     </li>
   );
 }
-
-export { groupEvidence } from "./format";
 
 /** Problems stay on screen. Claims that checked out fold away, since they are read only on demand. */
 function Evidence({

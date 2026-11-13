@@ -260,20 +260,6 @@ export async function syncFilings(
     .orderBy(desc(filings.filedAt));
 }
 
-export async function markFilingsProcessed(rows: Filing[]) {
-  for (const row of rows) {
-    await db
-      .update(filings)
-      .set({ processedAt: new Date().toISOString() })
-      .where(
-        and(
-          eq(filings.accessionNo, row.accessionNo),
-          eq(filings.ticker, row.ticker),
-        ),
-      );
-  }
-}
-
 /**
  * Stops a filing that stays unusable from forcing a full review every day. The days count from the
  * first failure, not the filing date, or one first seen a week late would get no retry at all.
@@ -580,9 +566,8 @@ function sectionByHeading(
         ? `${rest}\n[The end of this section could not be identified; text continues to the end of the report.]`
         : rest;
     }
-    const cut = text.slice(m.index, m.index + limit);
-    const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf(".\n"));
-    const whole = end > 0 ? cut.slice(0, end + 1) : cut;
+    const end = Math.max(window.lastIndexOf(". "), window.lastIndexOf(".\n"));
+    const whole = end > 0 ? window.slice(0, end + 1) : window;
     return `${whole.trim()}\n[Cut off here: this report has no standard section markers.]`;
   }
   return null;
