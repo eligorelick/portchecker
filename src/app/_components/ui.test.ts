@@ -909,8 +909,9 @@ void test("research dates say when returns stop a session before the quote", () 
     "Prices as of the quote time. Returns, highs and lows use closing prices through Nov 11, 2026. Research file from Nov 12, 2026.",
   );
   const quiet = "Prices as of the quote time.";
-  // The same session, including an 8 PM ET quote that is already Nov 13 in UTC and in Tokyo.
-  for (const quote of [at(16), at(21), at(1, 13)]) {
+  // The same session, including an 8 PM ET quote that is already Nov 13 in UTC and in Tokyo, and
+  // a 1 AM ET quote that is still Nov 11 on a computer in Denver or Los Angeles.
+  for (const quote of [at(16), at(21), at(1, 13), at(6)]) {
     assert.equal(
       format.packDates({ quote, price_summary: { latest_date: "2026-11-12" } }),
       quiet,

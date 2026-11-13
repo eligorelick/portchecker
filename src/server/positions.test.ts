@@ -1107,6 +1107,11 @@ void test("lots of one ticker in several accounts gain the same for either sign 
     position([holding("S", 10, 800), holding("S", 5, 450)])?.cost_basis,
     1250,
   );
+  // That includes two short lots: $600 and $600 reported is $1,200 shown, not the signed -$1,200.
+  assert.equal(
+    position([holding("S", -5, 600), holding("S", -5, 600)])?.cost_basis,
+    1200,
+  );
   assert.equal(
     position([holding("S", 10, 800), holding("S", 5, null)])?.unrealized_gain,
     null,
