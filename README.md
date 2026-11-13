@@ -97,7 +97,7 @@ Fallback is enabled by default. If another provider is configured, a failed call
 Open **Holdings → Update holdings**.
 
 - **CSV:** export Positions from Schwab and choose the CSV file. Parsing is local. Review every preview row, skipped-row notice, account label and cost-basis warning before confirming.
-- **Screenshots:** upload up to 12 images. AI extracts the positions before you confirm them, so crop out account identifiers and check every extracted value. Images are sent to the selected provider and retained locally even if you cancel the preview.
+- **Screenshots:** upload up to 12 images. AI extracts the positions before you confirm them, so crop out account identifiers and check every extracted value. Images are sent to the selected provider, or to the other one if that call fails and fallback is on, and are retained locally even if you cancel the preview.
 - **Manual entry:** add or edit individual rows. Enter **total cost basis**, not cost per share. Leave an unknown basis blank; zero is a real value. Keep account labels distinct when holding the same ticker in multiple accounts.
 
 **File import replaces the current holdings list.** Positions missing from the confirmed preview will be removed from that list; it is not an append operation. Use manual entry for a small change. Preview deletions and changed quantities carefully before choosing **Replace my holdings**.
@@ -114,22 +114,24 @@ For cash and money-market balances, use ticker `CASH` and enter the dollar balan
 
 The job may update the dossier's **Current view** after a successful final check. It does not replace your thesis or other owner-written sections. Without a saved thesis, reviews judge the available evidence without knowing your personal reasons for owning the holding.
 
-Use **Ask about this stock** on a holding page for follow-up questions about its latest saved research pack. This makes a model call; it does not refresh the market data or run a new review. Answers are shown on the page but are not stored, so copy anything you want to keep into your notes.
+Use **Ask about this holding**, on the Reasoning tab of a holding page, for follow-up questions about its saved research files. This makes a model call; it does not refresh the market data or run a new review. Answers are shown on the page but are not stored, so copy anything you want to keep into your notes.
 
 ## Read the results correctly
 
 Later runs choose a full review when a qualifying filing arrives, a new large price move warrants it, the previous full review is old, or you have changed your thesis. Otherwise they use a light review. A quiet light review can skip the second check; it must not be read as a newly verified conclusion. When a check finds a material problem, the job can revise once and check again. Unresolved concerns stay visible.
 
-| Label                 | Meaning                                                                                                                         |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Verified              | The second check matched a claim to the supplied research material.                                                             |
-| Unverified            | The claim could not be confirmed from that material. It is not necessarily false.                                               |
-| Contradicted          | The second check found material that conflicts with the claim.                                                                  |
-| Not checked           | No second check was performed, as can happen on a quiet light review.                                                           |
-| Verified score        | The share of displayed evidence/check claims marked verified. It is not a probability of investment success.                    |
-| Models agree/disagree | Whether the primary and independent action judgments agree. Agreement does not guarantee factual accuracy.                      |
-| Final check rejected  | The final check did not support the conclusion, or a contradiction remained. Read the concerns before using the recommendation. |
-| Review                | The holding needs attention; it is not an instruction to trade.                                                                 |
+| Label                 | Meaning                                                                                                                                                               |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Verified              | The second check matched a claim to the supplied research material.                                                                                                   |
+| Unverified            | The claim could not be confirmed from that material. It is not necessarily false.                                                                                     |
+| Contradicted          | The second check found material that conflicts with the claim.                                                                                                        |
+| Not checked           | No second check was performed, as can happen on a quiet light review, or the second check did not cover that claim.                                                   |
+| Verified score        | The share of displayed evidence/check claims marked verified. It is not a probability of investment success.                                                          |
+| Models agree/disagree | Whether the analyst's and the checker's action judgments agree, shown when two different providers did the two passes. Agreement does not guarantee factual accuracy. |
+| Final check rejected  | The final check did not support the conclusion. Read the concerns before using the recommendation.                                                                    |
+| Review                | The holding needs attention; it is not an instruction to trade.                                                                                                       |
+
+With one provider doing both passes, a disagreement reads "Second check disagrees" and agreement shows no label. A claim that is still contradicted while the final check supports the conclusion does not show "Final check rejected": it appears as a "contradicted" count beside the proof marks and as "Contradicted" on the claim, and the holding is listed on Today.
 
 An unpriced holding is named and omitted from totals, not valued at zero. Missing cost basis limits gain calculations. A stale brief, partial run or missing filing warning limits what was checked. A quiet brief is not a guarantee that the portfolio is safe.
 
@@ -165,7 +167,7 @@ Cron does not load your normal shell profile. Set its `PATH` to include the requ
 
 **Local storage does not mean local AI.** Research, thesis drafting and Ask can send your notes, holdings and research context to OpenAI through Codex or to Anthropic. Brief generation includes portfolio totals. Screenshot extraction sends the entire image. Fallback can send the same context to another provider. CSV parsing stays local; market-data requests still identify the requested tickers to FMP, and SEC requests include your configured contact identity.
 
-FMP access and AI usage are separate. Subscription calls use plan limits and may be affected by the provider's extra-usage settings; API calls are billed separately. Full reviews, web research, revisions, provider tests and fallback all consume usage. Settings shows recorded usage, which is not a complete bill or a price guarantee. Check your providers' current terms and rates before running a large portfolio.
+FMP access and AI usage are separate. Subscription calls use plan limits and may be affected by the provider's extra-usage settings; API calls are billed separately. Full reviews, web research, revisions, provider tests and fallback all consume usage. Settings shows the Claude token and web-search counts recorded for the last research run, which is not a complete bill or a price guarantee. ChatGPT usage is not recorded. Check your providers' current terms and rates before running a large portfolio.
 
 Known limits:
 
@@ -209,15 +211,15 @@ Read and review any schema-change prompt before accepting it. Do not build over 
 
 ## Commands
 
-| Command                                      | Purpose                                                                   |
-| -------------------------------------------- | ------------------------------------------------------------------------- |
-| `pnpm dev`                                   | Start the development server on loopback.                                 |
-| `pnpm build` / `pnpm start`                  | Build and serve the production app.                                       |
-| `pnpm research [TICKER...]`                  | Run one research job; optional tickers keep the existing portfolio brief. |
-| `pnpm pack:ticker AAPL`                      | Build a research pack; contacts data vendors but does not call a model.   |
-| `pnpm demo:seed`                             | Seed a separate empty installation with fictional data.                   |
-| `pnpm db:push`                               | Initialize or update the database schema.                                 |
-| `pnpm typecheck` / `pnpm lint` / `pnpm test` | Run development checks; follow the isolation rules in CONTRIBUTING.       |
+| Command                                                            | Purpose                                                                   |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `pnpm dev`                                                         | Start the development server on loopback.                                 |
+| `pnpm build` / `pnpm start`                                        | Build and serve the production app.                                       |
+| `pnpm research [TICKER...]`                                        | Run one research job; optional tickers keep the existing portfolio brief. |
+| `pnpm pack:ticker AAPL`                                            | Build a research pack; contacts data vendors but does not call a model.   |
+| `pnpm demo:seed`                                                   | Seed a separate empty installation with fictional data.                   |
+| `pnpm db:push`                                                     | Initialize or update the database schema.                                 |
+| `pnpm typecheck` / `pnpm lint` / `pnpm format:check` / `pnpm test` | Run development checks; follow the isolation rules in CONTRIBUTING.       |
 
 ## Troubleshooting
 
@@ -228,7 +230,7 @@ Read and review any schema-change prompt before accepting it. Do not build over 
 - **Another research run is in progress:** let the active run finish. A crashed run becomes reclaimable after its heartbeat is stale for ten minutes; do not start competing processes to bypass the guard.
 - **A filing could not be read:** inspect the warning. Temporary failures can be retried; a PDF/image exhibit that the app cannot extract remains explicitly unread. A review may proceed with incomplete source material.
 - **An unpriced holding or missing gains:** check the ticker, quote date and total cost basis. Missing values are not automatically zero.
-- **403 response:** use `localhost` or `127.0.0.1` on the machine running the app. Additional allowed hosts do not add authentication; review SECURITY before changing network access.
+- **403 response:** open the app at `localhost` or `127.0.0.1` on the machine running it, in its own tab rather than from another site's page. Hostnames added through `ALLOWED_HOSTS` do not add authentication; review SECURITY before changing network access.
 - **A scheduled job fails but manual research works:** check its operating-system user, working directory, `PATH`, provider sign-ins and `data/scheduled-run.log`.
 - **Changes do not appear:** `pnpm start` serves the previous build until you stop it, rebuild and restart. A browser can also retain an older tab icon until refreshed.
 
@@ -236,4 +238,4 @@ Read and review any schema-change prompt before accepting it. Do not build over 
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for offline verification and release checks, and [SECURITY.md](SECURITY.md) for the security model. Report reproducible issues with fictional or redacted inputs; do not attach real portfolios, screenshots, research packs or credentials.
 
-Publish an explicitly reviewed source export. Do not upload the whole working directory: private journals, plans, backups, data and generated files are not release material. Portchecker is available under the [MIT license](LICENSE).
+If you share a copy, share the tracked source (a clone or `git archive`), not your working directory: `.env`, `data/`, databases, logs and backups are ignored by git but would be included in a folder copy. Portchecker is available under the [MIT license](LICENSE).
