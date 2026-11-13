@@ -642,6 +642,34 @@ assert.equal(latest.recheckedAt, second.created_at);
 );
 
 scenario(
+  "an empty light review cannot replace an open trim with a hold",
+  String.raw`
+script('analyst', { ...analysis('AAA', false, 'trim'), headline: 'Trim AAA.' });
+script('verifier', { ...verification('AAA'), independent_action: 'trim' });
+await run();
+const trim = await update();
+mock.timers.tick(3 * 3600_000);
+// What an analyst that could not read its files returns under the prompt's defaults, and a
+// checker that found nothing to check.
+const stub = globalThis.modelStub;
+globalThis.modelStub = async (opts) => {
+  const answer = await stub(opts);
+  return opts.role === 'verifier'
+    ? { ...answer, data: { ...answer.data, checks: [] } }
+    : answer;
+};
+script('analyst', { ...analysis('AAA', true, 'hold'), headline: 'No material change.', what_changed: [], evidence: [] });
+await runResearch();
+globalThis.modelStub = stub;
+assert.match((await last('research_runs')).log_text, /AAA: FAILED\. The analyst returned no evidence/);
+assert.equal((await update()).id, trim.id);
+const shown = (await latestUpdates()).get('AAA');
+assert.equal(shown.id, trim.id);
+assert.equal(shown.result.action, 'trim');
+`,
+);
+
+scenario(
   "LIGHT add-to-hold change is verified and remains visible",
   String.raw`
 script('analyst', analysis('AAA', false, 'add'));

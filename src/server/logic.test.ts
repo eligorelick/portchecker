@@ -1428,6 +1428,14 @@ void test("a pass with nothing to show fails the ticker instead of replacing a r
   );
   assert.match(unusablePass("FULL", found, { checks: [] }) ?? "", /no checks/);
   assert.equal(unusablePass("FULL", found), null);
+  // A hold that drops an earlier trim is a change of call, so an empty one is a failed read too.
+  const quietHold: Pass = { ...empty, status: "no_change", action: "hold" };
+  assert.match(
+    unusablePass("LIGHT", quietHold, undefined, "trim") ?? "",
+    /no evidence/,
+  );
+  assert.equal(unusablePass("LIGHT", quietHold, undefined, "hold"), null);
+  assert.equal(unusablePass("LIGHT", quietHold, undefined, null), null);
 });
 
 void test("a stored FMP error or empty quote is fetched again and replaced", () => {

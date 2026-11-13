@@ -974,17 +974,17 @@ type ModelCaller = <S extends ZodType>(
 /**
  * A pass with nothing to show has usually failed to read its files. Saving it would replace the
  * last real review with an empty one, so it counts as a failed ticker. A quiet light review may
- * legitimately cite nothing.
+ * legitimately cite nothing, but not one that drops an earlier call: that is a change, and it
+ * would go on to be checked against nothing and shown as agreed.
  */
 export function unusablePass(
   depth: string,
   result: Pick<AnalystResult, "evidence" | "status" | "action">,
   verification?: Pick<VerifierResult, "checks">,
+  previousAction: string | null = null,
 ) {
-  const claimsSomething =
-    depth === "FULL" ||
-    result.status !== "no_change" ||
-    result.action !== "hold";
+  // The same test that sends a review to the second check.
+  const claimsSomething = needsVerification(depth, result, previousAction);
   if (!result.evidence.length && claimsSomething) {
     return "The analyst returned no evidence, which usually means it could not read the pack files.";
   }
@@ -1594,7 +1594,7 @@ async function reviewTicker(opts: {
     schema: holdingAnalystSchema,
   });
   let result = analyst.data;
-  stopIfUnusable(depth, result);
+  stopIfUnusable(depth, result, undefined, previousAction);
 
   // Verify, and revise once if the reviewer found problems.
   let revised = false;
@@ -1618,7 +1618,7 @@ async function reviewTicker(opts: {
   if (needsVerification(depth, result, previousAction)) {
     await log(`${ticker}: verifying.`);
     verifier = await verify();
-    stopIfUnusable(depth, result, verifier.data);
+    stopIfUnusable(depth, result, verifier.data, previousAction);
     const conditionIssues = fmp.isFund
       ? fundWeightConditionIssues(result, position?.weight_pct ?? null)
       : [];
@@ -1652,9 +1652,9 @@ async function reviewTicker(opts: {
         schema: holdingAnalystSchema,
       });
       result = analyst.data;
-      stopIfUnusable(depth, result);
+      stopIfUnusable(depth, result, undefined, previousAction);
       verifier = await verify();
-      stopIfUnusable(depth, result, verifier.data);
+      stopIfUnusable(depth, result, verifier.data, previousAction);
       revised = true;
     }
   }
