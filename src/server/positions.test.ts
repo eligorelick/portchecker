@@ -389,6 +389,48 @@ void test("csv: duplicate rows sum known values and never fill an unknown value 
   }
 });
 
+void test("csv: a long and a short row of one ticker in one account leave the basis unknown", () => {
+  // Long 10 bought for $800 and short 4 sold for $480, at $100: up $200 and up $80.
+  const gainOf = (csv: string) =>
+    computePortfolioFacts(
+      parsePositionsCsv(csv).rows,
+      new Map([["S", quote(100, 0)]]),
+      new Map(),
+      "2026-11-05",
+    ).positions[0]?.unrealized_gain;
+  const header = "Symbol,Quantity,Cost Basis";
+  // In two accounts each lot keeps its own basis, and the gain is right.
+  assert.equal(
+    gainOf(
+      `Positions for account One as of today\n${header}\nS,10,800\nPositions for account Two as of today\n${header}\nS,-4,480`,
+    ),
+    280,
+  );
+  // In one account the rows become one holding with one basis. $800 + $480 is the basis of
+  // neither side, and gave a loss of $680. Unknown is the honest answer, and the preview says why.
+  const oneAccount = parsePositionsCsv(`${header}\nS,10,800\nS,-4,480`);
+  assert.deepEqual(
+    oneAccount.rows.map((r) => [r.quantity, r.costBasis]),
+    [[6, null]],
+  );
+  assert.equal(gainOf(`${header}\nS,10,800\nS,-4,480`), null);
+  assert.match(
+    oneAccount.notes.join("\n"),
+    /S: .*both long and short.*cost basis.*blank/,
+  );
+  // A later row on either side cannot bring a basis back.
+  assert.equal(
+    parsePositionsCsv(`${header}\nS,10,800\nS,-4,480\nS,5,450`).rows[0]
+      ?.costBasis,
+    null,
+  );
+  // Two rows on the same side still add up.
+  assert.equal(
+    parsePositionsCsv(`${header}\nS,-5,600\nS,-5,600`).rows[0]?.costBasis,
+    1200,
+  );
+});
+
 const blankScreenPosition = {
   symbol: "AAA",
   description: null,

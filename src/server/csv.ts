@@ -287,6 +287,18 @@ export function parsePositionsCsv(csv: string): ParsedCsv {
     const key = `${holding.ticker}|${holding.accountLabel}`;
     const existing = merged.get(key);
     if (existing) {
+      // One holding has one basis, and a long cost plus short proceeds is the basis of neither
+      // side: it turned a $280 gain into a $680 loss. Unknown stays unknown for any later row.
+      if (
+        Math.sign(existing.quantity) !== Math.sign(holding.quantity) &&
+        existing.costBasis !== null &&
+        holding.costBasis !== null
+      ) {
+        notes.push(
+          `${holding.ticker}: this account lists it both long and short, so its combined cost basis is left blank and no gain is shown. Enter one basis by hand if you want a gain.`,
+        );
+        existing.costBasis = null;
+      }
       existing.quantity += holding.quantity;
       existing.marketValue =
         existing.marketValue === null || holding.marketValue === null
