@@ -55,11 +55,11 @@ What these checks do not cover is listed under [Known limits](#privacy-cost-and-
 
 ## Design decisions
 
-- **Figures come from code, not from the model.** Position values, weights, gains, concentration and the verified score are computed from holdings and quotes; the model is handed them and told to trust them. The cost is that a wrong vendor figure flows straight through, so the app cross-checks some vendor rows against each other and says so in the pack when they do not add up.
-- **A second pass checks the first and may disagree.** Its verdicts and its own action are shown beside the analyst's, and a rejected conclusion is not allowed to replace your saved Current view. The cost is a second model call for every full review, and two more when it revises. The checker also reads the analyst's review first, so it is a check of that review, not a blind second opinion.
+- **Portfolio figures come from code, not from the model.** Position values, weights, gains and concentration are computed from holdings and quotes, and the verified score is counted in code from the checker's verdicts; the model is handed the portfolio figures and told to trust them. The cost is that a wrong vendor figure flows straight through, so the app cross-checks some vendor rows against each other and says so in the pack when they do not add up.
+- **A second pass checks the first and may disagree.** Its verdicts and its own action are shown beside the analyst's, and a rejected conclusion is not allowed to replace your saved Current view. The cost is one more model call for every full review and for any light review that reports a change, and two more when it revises. The checker also reads the analyst's review first, so it is a check of that review, not a blind second opinion.
 - **Unknown stays unknown.** A holding with no price is named and left out of the totals instead of being valued at zero, a missing cost basis gives no gain, and an imported number in a form the reader does not recognise is left blank. The cost is totals that can be partial; the pages say which holdings were left out.
 - **Full reviews only when something changed.** A new annual, quarterly or current report, a move above 5% in a day or 10% in five sessions, a changed thesis or seven days since the last one triggers a full review; otherwise the review is light. That keeps model usage down, and it means a slow change with no filing and no large move waits up to a week.
-- **Local files and no login.** Holdings, research and briefs live in one SQLite file and plain files under `data/`, so a backup is a copy of that folder and `.env`. The cost is a single user on a trusted machine: the request checks in [SECURITY.md](SECURITY.md) are not authentication, and the AI calls still send your notes and holdings to the provider you choose.
+- **Local files and no login.** Holdings, research and briefs live in one SQLite file and plain files under `data/`, so with the app stopped a backup is a copy of that folder and `.env`, plus the database file if `DATABASE_PATH` points somewhere else. The cost is a single user on a trusted machine: the request checks in [SECURITY.md](SECURITY.md) are not authentication, and the AI calls still send your notes and holdings to the provider you choose, or to the other one when fallback moves a call.
 
 ## What you can do
 
@@ -75,7 +75,7 @@ The app stores data locally in SQLite and Markdown files. AI processing uses ext
 ## Requirements
 
 - **Node.js 22.18 or newer** and **pnpm 12.16.1**, as recorded in `package.json`.
-- A separate, writable project directory. On Windows, keep it outside `AppData\Local\Temp`; the tested Codex sandbox could not start processes there.
+- A separate, writable project directory. On Windows, keep it outside `AppData\Local\Temp`; the tested Codex sandbox could not start processes there. Keep its path short as well: `pnpm dev` failed with "Module not found" from a project folder whose path was 122 characters long and worked from one of 113, while `pnpm build` and `pnpm start` worked from both.
 - For real research: Financial Modeling Prep access, a name/email for the SEC request identity, and at least one AI provider below. The app has been tested with FMP Starter; endpoint availability depends on your plan.
 
 The automated checks run on Linux and Windows. Research runs with real providers have been made only on Windows, macOS is untested, and the Linux/macOS scheduling examples below have not been run.
@@ -186,7 +186,7 @@ Later runs choose a full review when a qualifying filing arrives, a new large pr
 | Final check rejected  | The final check did not support the conclusion. Read the concerns before using the recommendation.                                                                    |
 | Review                | The holding needs attention; it is not an instruction to trade.                                                                                                       |
 
-With one provider doing both passes, a disagreement reads "Second check disagrees" and agreement shows no label. A claim that is still contradicted while the final check supports the conclusion does not show "Final check rejected": it appears as a "contradicted" count beside the proof marks and as "Contradicted" on the claim, and the holding is listed on Today.
+With one provider doing both passes, a disagreement reads "Second check disagrees" and agreement shows no label. A claim that is still contradicted while the final check supports the conclusion does not show "Final check rejected": it appears on the holding page as a "contradicted" count beside the proof marks and as "Contradicted" on the claim, and the holding is listed on Today.
 
 An unpriced holding is named and omitted from totals, not valued at zero. Missing cost basis limits gain calculations. A stale brief, partial run or missing filing warning limits what was checked. A quiet brief is not a guarantee that the portfolio is safe.
 
@@ -220,7 +220,7 @@ Cron does not load your normal shell profile. Set its `PATH` to include the requ
 
 ## Privacy, cost and limitations
 
-**Local storage does not mean local AI.** Research, thesis drafting and Ask can send your notes, holdings and research context to OpenAI through Codex or to Anthropic. Brief generation includes portfolio totals. Screenshot extraction sends the entire image. Fallback can send the same context to another provider. CSV parsing stays local; market-data requests still identify the requested tickers to FMP, and SEC requests include your configured contact identity.
+**Local storage does not mean local AI.** Research, thesis drafting and Ask can send your notes, holdings and research context to OpenAI through Codex or to Anthropic. Brief generation includes portfolio totals. Screenshot extraction sends the entire image. Fallback can send the same context to another provider. CSV parsing stays local; market-data requests still identify the requested tickers to FMP, and SEC requests include your configured contact identity. `pnpm build` and `pnpm dev` download the app's two typefaces from Google Fonts; the running app then serves its own copies.
 
 FMP access and AI usage are separate. Subscription calls use plan limits and may be affected by the provider's extra-usage settings; API calls are billed separately. Full reviews, web research, revisions, provider tests and fallback all consume usage. Settings shows the Claude token and web-search counts recorded for the last research run, which is not a complete bill or a price guarantee. ChatGPT usage is not recorded. Check your providers' current terms and rates before running a large portfolio.
 
@@ -249,7 +249,7 @@ See [SECURITY.md](SECURITY.md) for provider data sharing, plain-text credential 
 | `data/last-run.log`       | Output of the most recent sidebar-started research run.                                       |
 | `data/scheduled-run.log`  | Output if you use the scheduling examples above.                                              |
 
-`DATABASE_PATH` changes the database location only. `pnpm build` opens the database, so it creates an empty file there if none exists; `pnpm db:push` creates the tables. Other data files remain relative to the directory from which the app or script runs. Use the project root consistently. There is no automatic pruning of research packs or imports.
+`DATABASE_PATH` changes the database location only. `pnpm build` opens the database, so it creates an empty database there if none exists; `pnpm db:push` creates the tables. Other data files remain relative to the directory from which the app or script runs. Use the project root consistently. There is no automatic pruning of research packs or imports.
 
 **Back up:** stop the app and all research jobs, then back up the entire `data/` folder, including database `-wal` and `-shm` companions. Include a custom database location if configured, and keep `.env` in a protected backup. Dossiers alone are not a complete backup.
 
@@ -295,4 +295,4 @@ Read and review any schema-change prompt before accepting it. Do not build over 
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for offline verification and release checks, and [SECURITY.md](SECURITY.md) for the security model. Report reproducible issues with fictional or redacted inputs; do not attach real portfolios, screenshots, research packs or credentials.
 
-If you share a copy, share the tracked source (a clone or `git archive`), not your working directory: `.env`, `data/`, databases, logs and backups are ignored by git but would be included in a folder copy. Portchecker is available under the [MIT license](LICENSE).
+If you share a copy, share the tracked source (a clone or `git archive`) and read its file list first, not your working directory: `.env`, `data/`, databases, logs and backups are ignored by git but would be included in a folder copy. Portchecker is available under the [MIT license](LICENSE).
