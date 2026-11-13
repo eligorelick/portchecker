@@ -29,13 +29,15 @@ Run checks appropriate to the change, then all of these:
 pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build
 ```
 
-`pnpm build` opens the database, so it creates an empty file at `DATABASE_PATH` (by default `data/portfolio.db`) if none exists.
+`pnpm build` opens the database, so it creates an empty database at `DATABASE_PATH` (by default `data/portfolio.db`) if none exists.
+
+Continuous integration runs the same five on Ubuntu and Windows with Node 22, and runs lint as `pnpm lint --max-warnings 0`, so a lint warning fails there. Run the tests in a git clone at least once: the test of the ignore rules is skipped in a copy that is not a git checkout.
 
 Report the checks actually run, their results and any remaining gaps, including provider and browser checks that were not performed. Offline tests do not prove real-provider isolation or research accuracy.
 
 ## Verifying beside a running installation
 
-If this directory serves a running installation, verify in a separate source-only copy. Copy the required source and configuration, install from the lockfile, and use an empty throwaway database and fictional fixtures. Do not copy `.env`, private `data/`, backups or the live `.next` directory. Building or running development mode in the live directory can replace files used by the running server.
+If this directory serves a running installation, verify in a separate source-only copy. Copy the required source and configuration, install from the lockfile, and use an empty throwaway database and fictional fixtures. Do not copy `.env`, private `data/`, backups or the live `.next` directory. Building or running development mode in the live directory can replace files used by the running server. On Windows, give the copy a short path: `pnpm dev` failed with "Module not found" from a folder whose path was 122 characters long and worked from one of 113.
 
 To preview the verified copy, invoke Next directly on a separate loopback port after the build completes:
 
@@ -54,14 +56,14 @@ Before committing:
 - Check that the change contains every file it needs, including new source files that are still untracked.
 - Keep `.env`, database files and their `-wal`/`-shm` sidecars, `data/`, logs, screenshots of real holdings, backups, audit artifacts and local tool directories out of the repository.
 - Keep `.env.example` to placeholders only.
-- `.gitignore` lists some private local notes (`/backups/` and several files under `/docs/`). Leave those entries in place; a test in `src/server/app-guards.test.ts` checks them. Do not commit such notes, and keep owner activity and local paths out of commit messages and public documents.
+- `.gitignore` lists some private local notes (`/backups/` and several files under `/docs/`). Leave those entries in place; a test in `src/server/app-guards.test.ts` checks them. Do not commit such notes and do not delete them: they stay on the owner's machine. Keep owner activity and local paths out of commit messages and public documents.
 - Contributor instructions (`AGENTS.md`, this file, any `CLAUDE.md` or planning document) may refer only to files that are in the repository.
 
 ## Publishing and releases
 
 The owner decides what is merged, tagged and published. A change that passes the checks is not an authorization to publish.
 
-- Publish tracked files only, from a clone or `git archive`, never by archiving a working directory. Review the list of files being published before it goes out.
+- Publish tracked files only, from a clone or `git archive`, never by archiving a working directory. Review the list of files being published before it goes out: it should hold the application source, scripts, required assets, configuration, the lockfile and the public documents, and nothing else.
 - Keep the [MIT license](LICENSE) in every copy and preserve its copyright and permission notices.
 - A release is checked in a clean directory: it installs from the lockfile and passes the required checks above, and the empty-install and fictional-demo flows work there (`pnpm db:push`, then `pnpm demo:seed`).
 - The public documents keep describing the local-only scope, provider data sharing and the access limits in [SECURITY.md](SECURITY.md). The unresolved Codex file boundary must remain disclosed; passing offline checks is not a security certification.
