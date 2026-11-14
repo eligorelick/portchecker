@@ -4,13 +4,43 @@
 
 Portchecker is a local, single-user portfolio research app. It reads your holdings and the thesis you wrote for each one, collects market data and SEC filings, has one AI pass review each stock or fund you hold and a second pass check the claims in that review against the same files, and writes a daily brief. Each holding shows the suggestion, the evidence, what the second check found and what would change the conclusion.
 
-**Decision support only. Portchecker never places trades.** A verified claim means a model matched it to the supplied research material; it does not establish that the source or investment recommendation is correct.
+**Decision support only. Portchecker never places trades, and nothing it produces is financial advice.** A verified claim means a model matched it to the supplied research material; it does not establish that the source or investment recommendation is correct.
 
 ![The Today page of the demo: a daily brief, the portfolio totals and one holding to look at](docs/demo-today.png)
 
 The screenshots show the built-in demo: four made-up investments, cash and a finished brief, loaded with `pnpm demo:seed`. It needs no account and no API key ([try it](#try-the-demo-without-credentials)).
 
-Licensed under [MIT](LICENSE). For development and release guidance, see [CONTRIBUTING.md](CONTRIBUTING.md).
+Built with Next.js, React, TypeScript, tRPC, Drizzle ORM on SQLite and Tailwind CSS. Licensed under [MIT](LICENSE). For development and release guidance, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Contents
+
+- [What you can do](#what-you-can-do)
+- [How it works](#how-it-works)
+- [Requirements](#requirements)
+- [Install](#install)
+- [Try the demo without credentials](#try-the-demo-without-credentials)
+- [Set up your own portfolio](#set-up-your-own-portfolio)
+- [Read the results correctly](#read-the-results-correctly)
+- [Run research on a schedule](#run-research-on-a-schedule)
+- [Privacy, cost and limitations](#privacy-cost-and-limitations)
+- [Data, backups and updates](#data-backups-and-updates)
+- [Commands](#commands)
+- [Troubleshooting](#troubleshooting)
+- [How correctness is checked](#how-correctness-is-checked)
+- [Design decisions](#design-decisions)
+- [Project layout](#project-layout)
+- [Contributing and release](#contributing-and-release)
+
+## What you can do
+
+- Review changes and unresolved calls on **Today**.
+- Track positions, cash, gains and concentration on **Holdings**.
+- Inspect each holding's reasoning, evidence, financial data, filings and review history.
+- Keep your own thesis and break conditions alongside the model's current view.
+- Import a Schwab Positions CSV, review screenshots with AI assistance, or edit holdings manually.
+- Run research on demand or schedule the command on your computer.
+
+The app stores data locally in SQLite and Markdown files. AI processing uses external providers. It has **no authentication** and is intended for one user on a trusted machine, not a public web deployment. Read [SECURITY.md](SECURITY.md) before connecting accounts or adding real holdings, including the documented Codex file-access limitation.
 
 ## How it works
 
@@ -33,63 +63,35 @@ flowchart LR
 1. **Research pack.** For each holding the app writes a dated folder under `data/packs/`. For a light review it holds a copy of your notes and one file with the vendor's figures and your position as computed in code. A full review adds the text it could read from the latest annual and quarterly reports and recent current reports (8-Ks), and web findings with links, gathered by a separate model call.
 2. **Analyst.** A model is given that folder, told to take its numbers only from those files, and returns a structured review: an action, the evidence with a source for each claim, its reasoning and what would change its mind.
 3. **Verifier.** A second pass gets the same folder plus the review. It marks each claim verified, unverified or contradicted, says whether the conclusion is supported, and gives its own action. In Both mode the other provider does this pass. If that provider's call fails and fallback is on, the check can go back to the provider that wrote the review, and the review then says one provider checked its own work.
-4. **One revision.** If the check finds a material problem, the analyst revises once and is checked again. A conclusion the final check does not support stays labelled as rejected. The earlier Current view in your notes is then kept and marked as not updated, and the same happens when a claim is still contradicted after the revision.
-5. **Brief.** Portfolio totals, weights, gains and the share of claims verified are computed in code. A model writes the brief around them. Dollar amounts, percentages, decimals and figures given in thousands, millions or billions in its summary, reasons and observations are compared with its inputs; whole numbers without a unit are not. When one cannot be traced, Today shows a general warning and the saved brief file names the figures.
+4. **One revision.** If the check finds a material problem, the analyst revises once and is checked again. If the final check still does not support the conclusion, the review stays labelled as rejected, and the earlier Current view in your notes is kept and marked as not updated. The same happens when a claim is still contradicted after the revision.
+5. **Brief.** Portfolio totals, weights, gains and the share of claims verified are computed in code, and a model writes the brief around them. The app then compares the figures in the brief's summary, reasons and observations with the inputs the model was given. It compares dollar amounts, percentages, decimals and figures given in thousands, millions or billions; it does not compare whole numbers without a unit. When a figure cannot be traced, Today shows a general warning and the saved brief file names the figures.
 
-On a quiet day a holding gets a light review instead of a full one. A light review that reports nothing new skips the second check. The holding page then keeps showing the last review that did say something, with its marks, and adds "Nothing new as of" with the time of the light one. A claim that had no second check is labelled "Not checked" ([how to read the labels](#read-the-results-correctly)).
+On a quiet day a holding gets a light review instead of a full one ([what triggers a full review](#read-the-results-correctly)). A light review that reports nothing new skips the second check. The holding page then keeps showing the last review that did say something, with its marks, and adds "Nothing new as of" with the time of the light one. A claim that had no second check is labelled "Not checked".
 
 ![A holding page of the demo: the suggestion, the second check's different answer, the proof strip and the chain from thesis through evidence to conclusion](docs/demo-holding.png)
-
-## How correctness is checked
-
-The numbers below were measured on the commit that last changed this section. Re-measure them with the commands shown.
-
-- **1,079 tests in 20 files** run with Node's built-in test runner (`pnpm test`). They need no API key and no provider sign-in: vendor and model answers are supplied by the tests, and the suite passes on a machine with neither. One test, of the ignore rules, is skipped in a copy that is not a git checkout.
-- **Coverage is about 93% of branches and 94% of functions** in Node 22's built-in report (`node --test --experimental-test-coverage "src/**/*.test.ts"`). Treat it as a rough guide: the report counts the test files as well as the application, and its line figure for one unchanged file moved enough between two runs to put the total at 93.2% in one and 94.1% in the other.
-- **About 28,000 lines of tests for about 17,500 lines of application code**, counted over the tracked files in `src/` and `scripts/`.
-- **The suite passes with the clock in `UTC`, `Asia/Tokyo` and `America/Los_Angeles`.** The app sets the computer's calendar beside US market dates, so the same tests are run in each zone.
-- **A continuous-integration workflow** is set up to run typecheck, lint with zero warnings allowed, the format check, the tests and a production build on Ubuntu and Windows with Node 22, on every push to `main` and every pull request ([workflow](.github/workflows/ci.yml)). The badge at the top shows its latest result. Before it was added, the same steps were run by hand on Windows 11 and, from a fresh clone, on Ubuntu under WSL.
-- **Fixes carry their evidence.** Since commit `85e803a`, a fix to behaviour is committed with a test that fails without it or, where a test cannot show it, a before-and-after check on a built server or in a browser. Each such commit message says what was wrong and how the fix was shown to work.
-
-These checks have limits, listed with the others under [Known limits](#privacy-cost-and-limitations): the tests supply the vendor and model answers themselves, so they check the code around the models and not the quality of a model's research, and a real Schwab export has not been validated end to end.
-
-## Design decisions
-
-- **Portfolio figures come from code, not from the model.** Position values, weights, gains and concentration are computed from holdings and quotes, and the verified score is counted in code from the checker's verdicts; the model is handed the portfolio figures and told to trust them. The cost is that a wrong vendor figure flows straight through, so the app cross-checks some vendor rows against each other and says so in the pack when they do not add up.
-- **A second pass checks the first and may disagree.** Its verdicts and its own action are shown beside the analyst's, and a rejected conclusion is not allowed to replace your saved Current view. The cost is one more model call for every full review and for any light review that reports a change, and two more when it revises. The checker also reads the analyst's review first, so it is a check of that review, not a blind second opinion.
-- **Unknown stays unknown.** A holding with no price is named and left out of the totals instead of being valued at zero, a missing cost basis gives no gain, and an imported number in a form the reader does not recognise is left blank. The cost is totals that can be partial; the pages say which holdings were left out.
-- **Full reviews only when something changed.** A new annual, quarterly or current report, a move above 5% in a day or 10% in five sessions, a changed thesis or seven days since the last one triggers a full review; otherwise the review is light. That keeps model usage down, and it means a slow change with no filing and no large move waits up to a week.
-- **Local files and no login.** Holdings, research and briefs live in one SQLite file and plain files under `data/`, so with the app stopped a backup is a copy of that folder and `.env`, plus the database file if `DATABASE_PATH` points somewhere else. The cost is a single user on a trusted machine: the request checks in [SECURITY.md](SECURITY.md) are not authentication, and the AI calls still send your notes and holdings to the provider you choose, or to the other one when fallback moves a call.
-
-## What you can do
-
-- Review changes and unresolved calls on **Today**.
-- Track positions, cash, gains and concentration on **Holdings**.
-- Inspect each holding's reasoning, evidence, financial data, filings and review history.
-- Keep your own thesis and break conditions alongside the model's current view.
-- Import a Schwab Positions CSV, review screenshots with AI assistance, or edit holdings manually.
-- Run research on demand or schedule the command on your computer.
-
-The app stores data locally in SQLite and Markdown files. AI processing uses external providers. It has **no authentication** and is intended for one user on a trusted machine, not a public web deployment. Read [SECURITY.md](SECURITY.md) before connecting accounts or adding real holdings, including the documented Codex file-access limitation.
 
 ## Requirements
 
 - **Node.js 22.18 or newer** and **pnpm 12.16.1**, as recorded in `package.json`.
-- A separate, writable project directory. On Windows, keep it outside `AppData\Local\Temp`; the tested Codex sandbox could not start processes there. Keep its path short as well: `pnpm dev` failed with "Module not found" from a project folder whose path was 122 characters long and worked from one of 113, while `pnpm build` and `pnpm start` worked from both.
-- For real research: Financial Modeling Prep access, a name/email for the SEC request identity, and at least one AI provider below. The app has been tested with FMP Starter; endpoint availability depends on your plan.
+- A separate, writable project directory. On Windows, keep it outside `AppData\Local\Temp`; the tested Codex sandbox could not start processes there. Keep its path short as well ([why](#troubleshooting)).
+- For real research: Financial Modeling Prep access, a name/email for the SEC request identity, and at least one AI provider from [the table below](#2-set-up-an-ai-provider). The app has been tested with FMP Starter; endpoint availability depends on your plan. The demo needs none of these.
 
-The automated checks have been run on Windows 11 and on Ubuntu under WSL. Research runs with real providers have been made only on Windows, macOS is untested, and the Linux/macOS scheduling examples below have not been run.
+The automated checks have been run on Windows 11 and on Ubuntu. Research runs with real providers have been made only on Windows, macOS is untested, and the Linux/macOS scheduling examples below have not been run.
 
-Download or clone the source, open a terminal in the project root, then install:
+## Install
+
+Clone the repository, or download its source from GitHub, then install from the project root:
 
 ```sh
+git clone https://github.com/eligorelick/portchecker.git
+cd portchecker
 npm install -g pnpm@12.16.1
 pnpm install --frozen-lockfile
 ```
 
 ## Try the demo without credentials
 
-Use a fresh copy of the project, separate from any real installation. After installing dependencies:
+Use a fresh copy of the project, separate from any real installation. After [installing](#install):
 
 ```sh
 pnpm db:push
@@ -143,9 +145,9 @@ pnpm start
 
 Open <http://localhost:3000>. `pnpm start` serves the production build; keep its terminal/process running while using the app. For development, use `pnpm dev` instead of the build/start pair. Both start commands bind to `127.0.0.1` by default.
 
-In **Settings**, select the provider mode, model and effort. Decide whether to enable **If one fails, use the other**, then save changes. Each provider's **Test** button makes a real model call using the saved settings; use it to confirm setup before a full run.
+In **Settings**, select the provider mode, model and effort, then save changes. Each provider's **Test** button makes a real model call using the saved settings; use it to confirm setup before a full run.
 
-Fallback is enabled by default. If another provider is configured, a failed call can be retried there, sharing the same research context and consuming that provider's usage. Turn fallback off if you do not want this behavior.
+**If one fails, use the other** (fallback) is on by default. If another provider is configured, a failed call can be retried there, sharing the same research context and consuming that provider's usage. Turn it off, and save, if you do not want this behavior.
 
 ### 4. Add and check holdings
 
@@ -161,11 +163,12 @@ For cash and money-market balances, use ticker `CASH` and enter the dollar balan
 
 ### 5. Run research and record your thesis
 
-1. Press **Run research** in the sidebar. Watch its status and review any failed/skipped holdings. A first run performs full reviews and can take substantial time, especially with many holdings or high effort settings. A run is a separate process: it keeps going if you close the page or stop the app. To end one, press **Stop research** in the sidebar. The run notices within a couple of seconds, ends its model calls and starts no more. Reviews that had finished stay saved; a review that was in progress is dropped, and no brief is written. The sidebar shows the run as stopping for about twelve seconds, until its process has let go of its files, and then offers **Run research** again.
-2. Open **Today** for the brief. Check its date, quote dates, coverage and warnings before acting.
-3. Open each holding's **Thesis and notes** tab. Write why you own it and measurable conditions that would break that thesis, then save. After an initial run, **Draft a thesis for me** can help; it is a real model call, and you must review the draft before saving it as your thesis.
-4. Run research again when you want saved thesis changes evaluated. Saving a thesis requests a full review; it does not rewrite the previous review automatically.
-5. Read the evidence and second opinion, then use **Log a decision** to record what you chose. Logging is a journal entry: it neither executes a trade nor updates your share count. Update holdings after making a real trade.
+1. Press **Run research** in the sidebar. Watch its status and review any failed/skipped holdings. A first run performs full reviews and can take substantial time, especially with many holdings or high effort settings. A run is a separate process: it keeps going if you close the page or stop the app.
+2. To end a run, press **Stop research** in the sidebar. The run notices within a couple of seconds, ends its model calls and starts no more. Reviews that had finished stay saved; a review that was in progress is dropped, and no brief is written. The sidebar shows the run as stopping for about twelve seconds, until its process has let go of its files, and then offers **Run research** again.
+3. Open **Today** for the brief. Check its date, quote dates, coverage and warnings before acting.
+4. Open each holding's **Thesis and notes** tab. Write why you own it and measurable conditions that would break that thesis, then save. After an initial run, **Draft a thesis for me** can help; it is a real model call, and you must review the draft before saving it as your thesis.
+5. Run research again when you want saved thesis changes evaluated. Saving a thesis requests a full review; it does not rewrite the previous review automatically.
+6. Read the evidence and second opinion, then use **Log a decision** to record what you chose. Logging is a journal entry: it neither executes a trade nor updates your share count. Update holdings after making a real trade.
 
 The job may update the dossier's **Current view** after a successful final check. It does not replace your thesis or other owner-written sections. Without a saved thesis, reviews judge the available evidence without knowing your personal reasons for owning the holding.
 
@@ -173,12 +176,19 @@ Use **Ask about this holding**, on the Reasoning tab of a holding page, for foll
 
 ## Read the results correctly
 
-Later runs choose a full review when a qualifying filing arrives, a new large price move warrants it, the previous full review is old, or you have changed your thesis. Otherwise they use a light review. A large move is more than 5% in a day or more than 10% over five trading days, measured on the holding's own price and not against the market, and a full review is due once the last one is more than seven days old. A quiet light review can skip the second check; it must not be read as a newly verified conclusion. When a check finds a material problem, the job can revise once and check again. Unresolved concerns stay visible.
+After the first run, each run chooses a full or a light review for every holding. A full review is chosen when:
+
+- a qualifying filing has arrived, such as a new annual, quarterly or current report;
+- the price has made a new large move: more than 5% in a day or more than 10% over five trading days, measured on the holding's own price and not against the market;
+- you have changed your thesis; or
+- the last full review is more than seven days old.
+
+Otherwise the review is light. A quiet light review can skip the second check; it must not be read as a newly verified conclusion. When a check finds a material problem, the job can revise once and check again. Unresolved concerns stay visible.
 
 | Label                 | Meaning                                                                                                                                                               |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Verified              | The second check matched a claim to the supplied research material.                                                                                                   |
-| Unverified            | The claim could not be confirmed from that material. It is not necessarily false.                                                                                     |
+| Unverified            | The claim could not be confirmed from that material. It is not necessarily false. The count under the proof marks words this as "could not be found".                 |
 | Contradicted          | The second check found material that conflicts with the claim.                                                                                                        |
 | Not checked           | No second check was performed, as can happen on a quiet light review, or the second check did not cover that claim.                                                   |
 | Verified score        | The share of displayed evidence/check claims marked verified. It is not a probability of investment success.                                                          |
@@ -186,7 +196,10 @@ Later runs choose a full review when a qualifying filing arrives, a new large pr
 | Final check rejected  | The final check did not support the conclusion. Read the concerns before using the recommendation.                                                                    |
 | Review                | The holding needs attention; it is not an instruction to trade.                                                                                                       |
 
-With one provider doing both passes, a disagreement reads "Second check disagrees" and agreement shows no label. A claim that is still contradicted while the final check supports the conclusion does not show "Final check rejected": it appears on the holding page as a "contradicted" count beside the proof marks and as "Contradicted" on the claim, and the holding is listed on Today.
+Two cases the table does not cover:
+
+- **One provider doing both passes.** A disagreement reads "Second check disagrees", and agreement shows no label.
+- **A contradicted claim under a supported conclusion.** When a claim is still contradicted but the final check supports the conclusion, "Final check rejected" is not shown. The holding page shows a "contradicted" count beside the proof marks and "Contradicted" on the claim, and the holding is listed on Today.
 
 An unpriced holding is named and omitted from totals, not valued at zero. Missing cost basis limits gain calculations. A stale brief, partial run or missing filing warning limits what was checked. A quiet brief is not a guarantee that the portfolio is safe.
 
@@ -277,7 +290,10 @@ Read and review any schema-change prompt before accepting it. Do not build over 
 | `pnpm pack:ticker AAPL`                                            | Build a research pack; contacts data vendors but does not call a model.   |
 | `pnpm demo:seed`                                                   | Seed a separate empty installation with fictional data.                   |
 | `pnpm db:push`                                                     | Initialize or update the database schema.                                 |
+| `pnpm db:studio`                                                   | Open Drizzle Studio to browse the database.                               |
 | `pnpm typecheck` / `pnpm lint` / `pnpm format:check` / `pnpm test` | Run development checks; follow the isolation rules in CONTRIBUTING.       |
+| `pnpm check`                                                       | Run lint and typecheck together.                                          |
+| `pnpm lint:fix` / `pnpm format:write`                              | Apply automatic lint and formatting fixes.                                |
 
 ## Troubleshooting
 
@@ -291,9 +307,47 @@ Read and review any schema-change prompt before accepting it. Do not build over 
 - **403 response:** open the app at `localhost` or `127.0.0.1` on the machine running it, in its own tab rather than from another site's page. Hostnames added through `ALLOWED_HOSTS` do not add authentication; review SECURITY before changing network access.
 - **A scheduled job fails but manual research works:** check its operating-system user, working directory, `PATH`, provider sign-ins and `data/scheduled-run.log`.
 - **Changes do not appear:** `pnpm start` serves the previous build until you stop it, rebuild and restart. A browser can also retain an older tab icon until refreshed.
+- **`pnpm dev` fails with "Module not found" on Windows:** move the project to a shorter path. It failed from a project folder whose path was 122 characters long and worked from one of 113, while `pnpm build` and `pnpm start` worked from both.
+
+## How correctness is checked
+
+The numbers below were measured when this section was last changed. Re-measure them with the commands shown.
+
+- **More than 1,000 tests in 20 files** run with Node's built-in test runner (`pnpm test`). They need no API key and no provider sign-in: vendor and model answers are supplied by the tests, and the suite passes on a machine with neither. One test, of the ignore rules, is skipped in a copy that is not a git checkout.
+- **Coverage is about 93% of branches and 94% of functions** in Node 22's built-in report (`node --test --experimental-test-coverage "src/**/*.test.ts"`). Treat it as a rough guide: the report counts the test files as well as the application, and its line figure for one unchanged file moved enough between two runs to put the total at 93.2% in one and 94.1% in the other.
+- **About 28,000 lines of tests for about 17,500 lines of application code**, counted over the tracked files in `src/` and `scripts/`.
+- **The suite passes with the clock in `UTC`, `Asia/Tokyo` and `America/Los_Angeles`.** The app sets the computer's calendar beside US market dates, so the same tests are run in each zone.
+- **Continuous integration** runs typecheck, lint with zero warnings allowed, the format check, the tests and a production build on Ubuntu and Windows with Node 22, on every push to `main` and every pull request ([workflow](.github/workflows/ci.yml)). The badge at the top shows its latest result.
+- **Fixes carry their evidence.** Since the first public commit (`85e803a`), a fix to behaviour is committed with a test that fails without it or, where a test cannot show it, a before-and-after check on a built server or in a browser. Each such commit message says what was wrong and how the fix was shown to work.
+
+These checks have limits, listed with the others under [Known limits](#privacy-cost-and-limitations): the tests supply the vendor and model answers themselves, so they check the code around the models and not the quality of a model's research, and a real Schwab export has not been validated end to end.
+
+## Design decisions
+
+- **Portfolio figures come from code, not from the model.** Position values, weights, gains and concentration are computed from holdings and quotes, and the verified score is counted in code from the checker's verdicts; the model is handed the portfolio figures and told to trust them. The cost is that a wrong vendor figure flows straight through, so the app cross-checks some vendor rows against each other and says so in the pack when they do not add up.
+- **A second pass checks the first and may disagree.** Its verdicts and its own action are shown beside the analyst's, and a rejected conclusion is not allowed to replace your saved Current view. The cost is one more model call for every full review and for any light review that reports a change, and two more when it revises. The checker also reads the analyst's review first, so it is a check of that review, not a blind second opinion.
+- **Unknown stays unknown.** A holding with no price is named and left out of the totals instead of being valued at zero, a missing cost basis gives no gain, and an imported number in a form the reader does not recognise is left blank. The cost is totals that can be partial; the pages say which holdings were left out.
+- **Full reviews only when something changed.** A new filing, a large price move, a changed thesis or a week since the last full review triggers one ([exact thresholds](#read-the-results-correctly)); otherwise the review is light. That keeps model usage down, and it means a slow change with no filing and no large move waits up to a week.
+- **Local files and no login.** Holdings, research and briefs live in one SQLite file and plain files under `data/`, so with the app stopped a backup is a copy of that folder and `.env`, plus the database file if `DATABASE_PATH` points somewhere else. The cost is a single user on a trusted machine: the request checks in [SECURITY.md](SECURITY.md) are not authentication, and the AI calls still send your notes and holdings to the provider you choose, or to the other one when fallback moves a call.
+
+## Project layout
+
+| Path                                         | Contents                                                                                                                   |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/`                                   | The pages: Today, Holdings, one page per holding, Update holdings and Settings.                                            |
+| `src/server/research/`                       | The research job: building packs (`pack.ts`), the prompts and output formats (`prompts.ts`) and the run itself (`run.ts`). |
+| `src/server/fmp.ts`, `src/server/edgar.ts`   | Market data from FMP and filings from SEC EDGAR.                                                                           |
+| `src/server/model.ts`                        | Every model call and the routing between providers.                                                                        |
+| `src/server/portfolio.ts`                    | Portfolio totals, weights and gains.                                                                                       |
+| `src/server/csv.ts`, `src/server/dossier.ts` | The Schwab CSV reader and the per-holding notes files.                                                                     |
+| `src/server/api/`                            | The tRPC API the pages call.                                                                                               |
+| `src/server/db/`                             | The database schema.                                                                                                       |
+| `src/middleware.ts`                          | The request checks described in [SECURITY.md](SECURITY.md).                                                                |
+| `scripts/`                                   | The `research`, `pack:ticker` and `demo:seed` commands.                                                                    |
+| `src/**/*.test.ts`                           | The tests, in `src/server/` and `src/app/_components/`.                                                                    |
 
 ## Contributing and release
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for offline verification and release checks, and [SECURITY.md](SECURITY.md) for the security model. Report reproducible issues with fictional or redacted inputs; do not attach real portfolios, screenshots, research packs or credentials.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for offline verification and release checks, and [SECURITY.md](SECURITY.md) for the security model. Report reproducible problems on the [issue tracker](https://github.com/eligorelick/portchecker/issues) with fictional or redacted inputs; do not attach real portfolios, screenshots, research packs or credentials. Report a security problem privately, as [SECURITY.md](SECURITY.md#reporting-a-vulnerability) describes.
 
 If you share a copy, share the tracked source (a clone or `git archive`) and read its file list first, not your working directory: `.env`, `data/`, databases, logs and backups are ignored by git but would be included in a folder copy. Portchecker is available under the [MIT license](LICENSE).

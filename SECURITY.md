@@ -48,3 +48,7 @@ On 2026-11-12, `pnpm audit --prod` reported no known production-dependency advis
 This advisory remains unresolved in the lockfile. A second advisory present at initial publication, for esbuild 0.18.20 reached through Drizzle Kit's TypeScript loader ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)), was cleared by an override in `pnpm-workspace.yaml` that gives the loader esbuild 0.25.12, the version Drizzle Kit itself uses. The override is outside the range the loader declares, so re-check `pnpm db:push` when updating Drizzle Kit.
 
 Re-run both audits when updating dependencies; this dated result is not an ongoing security guarantee.
+
+## Reporting a vulnerability
+
+Report a security problem privately through GitHub: open the repository's **Security** tab and choose **Report a vulnerability**, or go straight to the [private report form](https://github.com/eligorelick/portchecker/security/advisories/new). Do not open a public issue for it. Use fictional or redacted inputs; do not attach real portfolios, screenshots, research packs or credentials.
